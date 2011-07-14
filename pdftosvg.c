@@ -6,13 +6,18 @@
 
 #define IMAGE_DPI 150
 
+typedef struct write_image_data {
+	int counter;
+	const char* filename;
+} write_image_data_t;
+
 static cairo_status_t
 write_image_func (void *closure,
 		cairo_surface_t *surface,
 		char *filename) {
-	int *counter = (int*)closure;
-	(*counter)++;
-	sprintf(filename, "%d.png", *counter);
+	write_image_data_t *data = (write_image_data_t*)closure;
+	data->counter++;
+	sprintf(filename, "%s-%d.png", data->filename, data->counter);
     return cairo_surface_write_to_png (surface, filename);
 }
 
@@ -80,8 +85,10 @@ int main(int argc, char *argv[])
                                           (double)(IMAGE_DPI*width/72.0),
                                           (double)(IMAGE_DPI*height/72.0));
     
-    int counter = 0;
-    cairo_svg_surface_set_write_image_func(surface, write_image_func, (void*)&counter);
+    write_image_data_t data;
+    data.counter = 0;
+    data.filename = (const char*)out_file;
+    cairo_svg_surface_set_write_image_func(surface, write_image_func, (void*)&data);
 	
     cr = cairo_create (surface);
     cairo_scale (cr, IMAGE_DPI/72.0, IMAGE_DPI/72.0);
