@@ -1,12 +1,19 @@
 ﻿■ pixman cairoのビルド
-export PIXMAN_DIR=/home/miyabe/workspaces/pdftosvg/pixman
-export CAIRO_DIR=/home/miyabe/workspaces/pdftosvg/cairo
+# Gitからソースを取得
+git clone git://anongit.freedesktop.org/git/pixman.git
+git clone git://github.com/miyabe/cairo.git
 
+# パスの設定
+export PIXMAN_DIR=PIXMANのディレクトリのパス
+export CAIRO_DIR=CAIROのディレクトリのパス
+
+# pixmanをビルド
 cd $PIXMAN_DIR
 ./autogen.sh
 ./configure
 make
 
+# cairoをビルド
 cd $CAIRO_DIR
 ./autogen.sh
 make clean
@@ -14,17 +21,22 @@ make clean
 make
 
 ■ pdftosvgのコンパイル
+# pkg-configのための環境変数を設定
 export PKG_CONFIG_PATH=$PIXMAN_DIR:$CAIRO_DIR
 export PKG_CONFIG_TOP_BUILD_DIR=
-pkg-config --cflags cairo poppler-glib
 
+# pdftosvgをコンパイル
 gcc -o pdftosvg pdftosvg.c `pkg-config --cflags cairo poppler-glib` -L$CAIRO_DIR/src/.libs  -lcairo -lpoppler-glib -pthread -lgdk-x11-2.0 -lgdk_pixbuf-2.0 -lm -lpangocairo-1.0 -lpango-1.0 -lgio-2.0 -lgobject-2.0 -lgmodule-2.0 -lgthread-2.0 -lrt -lglib-2.0
 
+# 実行時のライブラリパスを設定
 export LD_LIBRARY_PATH=$CAIRO_DIR/src/.libs:$PIXMAN_DIR/pixman/.libs
 
+# 実行
 ./pdftosvg test.pdf test.svg 1
 
-■ 次の関数が加えられています
+
+■ cairoには次の関数が加えられています
+
 @closure: ユーザーのデータ
 @surface: 画像 #cairo_surface_t
 @filename: 出力先のファイル名
