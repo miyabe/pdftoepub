@@ -1507,8 +1507,8 @@
   <path d="M 62.128906 750.386719 L 70.9375 750.386719 L 70.9375 741.644531 L 62.128906 741.644531 Z "/>
 </clipPath>
 <image id="image7" width="11" height="12" xlink:href="PD1213P048.svg-1.png"/>
-<pattern id="pattern0" patternUnits="userSpaceOnUse" width="11" height="12"  patternTransform="matrix(1,0,0,1,61,740)">
-  <use xlink:href="#image7"/>
+<pattern id="pattern0" patternUnits="userSpaceOnUse" width="11" height="12" >
+  <use xlink:href="#image7" transform="matrix(1,0,0,1,61,740)"/>
 </pattern>
 <mask id="mask0">
 <rect x="0" y="0" width="592.441" height="799.37" style="fill:url(#pattern0);stroke:none;"/>

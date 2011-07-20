@@ -1156,8 +1156,8 @@
   <path d="M 315.96875 599.589844 L 527.871094 599.589844 L 527.871094 413.226562 L 315.96875 413.226562 Z "/>
 </clipPath>
 <image id="image6" width="1332" height="1171" xlink:href="PD1213P044.svg-1.png"/>
-<pattern id="pattern0" patternUnits="userSpaceOnUse" width="1332" height="1171"  patternTransform="matrix(0.16122,0,0,0.16122,314.549683,412.009465)">
-  <use xlink:href="#image6"/>
+<pattern id="pattern0" patternUnits="userSpaceOnUse" width="1332" height="1171" >
+  <use xlink:href="#image6" transform="matrix(0.16122,0,0,0.16122,314.549683,412.009465)"/>
 </pattern>
 <clipPath id="clip3">
   <path d="M 0 0 L 592 0 L 592 799 L 0 799 Z "/>
