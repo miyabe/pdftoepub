@@ -78,7 +78,6 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-	fontfile = cairo_svg_fontfile_create("test_font.svg");
 
     page = poppler_document_get_page (document, page_num - 1);
     if (page == NULL) {
@@ -88,7 +87,9 @@ int main(int argc, char *argv[])
 
     poppler_page_get_size (page, &width, &height);
  
-    surface = cairo_svg_surface_create_with_fontfile (out_file, width, height, fontfile);
+	//fontfile = cairo_svg_fontfile_create("test_font.svg");
+    //surface = cairo_svg_surface_create_with_fontfile (out_file, width, height, fontfile);
+    surface = cairo_svg_surface_create (out_file, width, height);
     
     write_image_data_t data;
     data.counter = 0;
@@ -122,7 +123,7 @@ int main(int argc, char *argv[])
 
     g_object_unref (document);
     
-    cairo_svg_fontfile_finish(fontfile);
+    //cairo_svg_fontfile_finish(fontfile);
 
     return 0;
 }

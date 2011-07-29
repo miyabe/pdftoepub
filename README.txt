@@ -67,6 +67,8 @@ show_text_glyphの呼び出しに対応した。
 show_text_glyphだけを呼び出した場合は<font-face>、
 show_glyphだけを呼び出した場合は<symbol>によりテキストを出力する。
 
+縦書き、横書きフォントを内部的に判別できるようにした。
+
 ・ 既知の問題
 show_text_glyphとshow_glyphの混合呼び出しには対応していない。おそらく不正確なSVGが出力される。
 
