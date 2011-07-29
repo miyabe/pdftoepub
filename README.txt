@@ -37,7 +37,7 @@ make
 cd $POPPLER_DIR
 ./autogen.sh
 make clean
-./configure CAIRO_CFLAGS="-I$CAIRO_DIR/ -I$CAIRO_DIR/src/" CAIRO_LIBS="-L$CAIRO_DIR/src/.libs/ -lcairo" CFLAGS="-I/usr/include/glib-2.0 -I/usr/include/glib-2.0/include" LIBS="-lglib-2.0"
+./configure CAIRO_CFLAGS="-I$CAIRO_DIR/ -I$CAIRO_DIR/src/" CAIRO_LIBS="-L$CAIRO_DIR/src/.libs/ -lcairo" CFLAGS="-I/usr/include/glib-2.0 -I/usr/include/glib-2.0/include" LIBS="-lglib-2.0" --datarootdir=/usr/share
 make
 
 ■ サンプルプログラムのコンパイルと実行
