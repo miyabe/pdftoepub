@@ -3,22 +3,25 @@
 #include <string.h>
 #include <poppler.h>
 #include <cairo.h>
-
-#define IMAGE_DPI 150
+#include <cairo-svg.h>
 
 typedef struct write_image_data {
 	int counter;
 	const char* filename;
+	const char* basename;
 } write_image_data_t;
 
 static cairo_status_t
 write_image_func (void *closure,
 		cairo_surface_t *surface,
 		char *filename) {
+	cairo_status_t status = CAIRO_STATUS_SUCCESS;
 	write_image_data_t *data = (write_image_data_t*)closure;
 	data->counter++;
 	sprintf(filename, "%s-%d.png", data->filename, data->counter);
-    return cairo_surface_write_to_png (surface, filename);
+    status = cairo_surface_write_to_png (surface, filename);
+	sprintf(filename, "%s-%d.png", data->basename, data->counter);
+	return status;
 }
 
 int main(int argc, char *argv[])
@@ -31,9 +34,11 @@ int main(int argc, char *argv[])
     const char *out_file;
     gchar *absolute, *uri;
     int page_num, num_pages;
+    cairo_svg_fontfile_t *fontfile;
     cairo_surface_t *surface;
     cairo_t *cr;
     cairo_status_t status;
+    char *tmpChar;
 
     if (argc != 4) {
         printf ("Usage: pdftoimage input_file.pdf output_file.svg page\n");
@@ -73,6 +78,8 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+	fontfile = cairo_svg_fontfile_create("test_font.svg");
+
     page = poppler_document_get_page (document, page_num - 1);
     if (page == NULL) {
         printf("poppler fail: page not found\n");
@@ -80,21 +87,29 @@ int main(int argc, char *argv[])
     }
 
     poppler_page_get_size (page, &width, &height);
-
-    surface = cairo_svg_surface_create (out_file,
-                                          (double)(IMAGE_DPI*width/72.0),
-                                          (double)(IMAGE_DPI*height/72.0));
+ 
+    surface = cairo_svg_surface_create_with_fontfile (out_file, width, height, fontfile);
     
     write_image_data_t data;
     data.counter = 0;
+    
     data.filename = (const char*)out_file;
+   	tmpChar = (char*)strrchr(out_file, '/');
+   	if (tmpChar == NULL) {
+   		data.basename = (const char*)out_file;
+   	}
+   	else {
+    	data.basename = (const char*)(tmpChar + 1);
+    }
     cairo_svg_surface_set_write_image_func(surface, write_image_func, (void*)&data);
 	
     cr = cairo_create (surface);
-    cairo_scale (cr, IMAGE_DPI/72.0, IMAGE_DPI/72.0);
-    cairo_save (cr);
+    cairo_rectangle (cr, 0, 0, (int)width, (int)height);
+    cairo_clip (cr);
+    cairo_new_path (cr);
+    
     poppler_page_render (page, cr);
-    cairo_restore (cr);
+    
     g_object_unref (page);
 
     status = cairo_status(cr);
@@ -106,6 +121,8 @@ int main(int argc, char *argv[])
     cairo_surface_destroy (surface);
 
     g_object_unref (document);
+    
+    cairo_svg_fontfile_finish(fontfile);
 
     return 0;
 }
