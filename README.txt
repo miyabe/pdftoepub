@@ -41,13 +41,9 @@ make clean
 make
 
 ■ サンプルプログラムのコンパイルと実行
-# pdftosvg
-gcc -o pdftosvg pdftosvg.c `pkg-config --cflags cairo poppler-glib` -L$CAIRO_DIR/src/.libs -L$POPPLER_DIR/glib/.libs -lcairo -lpoppler-glib -pthread -lgdk-x11-2.0 -lgdk_pixbuf-2.0 -lm -lpangocairo-1.0 -lpango-1.0 -lgio-2.0 -lgobject-2.0 -lgmodule-2.0 -lgthread-2.0 -lrt -lglib-2.0
-./pdftosvg PD1213P046.pdf PD1213P046
+# pdftoepub
+gcc -o pdftoepub pdftoepub.c `pkg-config --cflags cairo poppler-glib` -L$CAIRO_DIR/src/.libs -L$POPPLER_DIR/glib/.libs -lcairo -lpoppler-glib -pthread -lgdk-x11-2.0 -lgdk_pixbuf-2.0 -lm -lpangocairo-1.0 -lpango-1.0 -lgio-2.0 -lgobject-2.0 -lgmodule-2.0 -lgthread-2.0 -lrt -lglib-2.0; ./pdftoepub work/PD1213P044.pdf work/PD1213P044
 
-# pdftosvgall
-gcc -o pdftosvgall pdftosvgall.c `pkg-config --cflags cairo poppler-glib` -L$CAIRO_DIR/src/.libs -L$POPPLER_DIR/glib/.libs -lcairo -lpoppler-glib -pthread -lgdk-x11-2.0 -lgdk_pixbuf-2.0 -lm -lpangocairo-1.0 -lpango-1.0 -lgio-2.0 -lgobject-2.0 -lgmodule-2.0 -lgthread-2.0 -lrt -lglib-2.0
-./pdftosvgall
 
 # 実行
 ./pdftosvg test.pdf test.svg 1
@@ -138,3 +134,7 @@ cairo_svg_fontfile_finish (cairo_svg_fontfile_t   *fontfile);
 
 cairoへの出力でshow_glyphではなくshow_text_glyphを呼び出すようにした。
 
+■ SVG-OTF変換について
+CIDに変換し、単一化する必要がある
+
+fontforge -c 'open($1);' font.svg
