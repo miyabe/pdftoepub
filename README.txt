@@ -1,24 +1,35 @@
-﻿# パスの設定
-export PIXMAN_DIR=PIXMANのディレクトリのパス
-export CAIRO_DIR=CAIROのディレクトリのパス
-export POPPLER_DIR=POPPLERのディレクトリのパス
+﻿■ ビルド方法
+# Debian squeeze でビルド・動作を確認しています
+
+# 以下のコマンドでGitによりpixman, cairo, poppler, pdftoepubのソースを取得します。pixmanには手を加えていませんが、cairoをビルドするために必要です。
+
+git clone git://anongit.freedesktop.org/git/pixman.git
+git clone git://github.com/miyabe/cairo.git
+git clone git://github.com/miyabe/poppler.git
+git clone git://github.com/miyabe/pdftoepub.git
+
+# ビルドの準備のために、以下の環境変数を設定しておきます。
+
+export PIXMAN_DIR=[PIXMANのディレクトリのパス]
+export CAIRO_DIR=[CAIROのディレクトリのパス]
+export POPPLER_DIR=[POPPLERのディレクトリのパス]
+export PDFTOEPUB_DIR=[PDFTOEPUBのディレクトリのパス]
+
+# 例えばfooディレクトリにpixman, cairo, popplerを落とした場合は、fooディレクトリ内で以下を実行します。
 
 export PIXMAN_DIR=`pwd`/pixman
 export CAIRO_DIR=`pwd`/cairo
 export POPPLER_DIR=`pwd`/poppler
+export PDFTOEPUB_DIR=`pwd`/pdftoepub
 
-# pkg-configのための環境変数を設定
+# pkg-configのための環境変数を設定。
+
 export PKG_CONFIG_PATH=$PIXMAN_DIR:$CAIRO_DIR:$POPPLER_DIR
 export PKG_CONFIG_TOP_BUILD_DIR=
 pkg-config --cflags cairo poppler-glib
 
-# 実行時のライブラリパスを設定
+# 実行時のライブラリパスを設定。
 export LD_LIBRARY_PATH=$CAIRO_DIR/src/.libs:$PIXMAN_DIR/pixman/.libs:$POPPLER_DIR/glib/.libs
-
-■ pixman cairoのビルド
-# Gitからソースを取得
-git clone git://anongit.freedesktop.org/git/pixman.git
-git clone git://github.com/miyabe/cairo.git
 
 # pixmanをビルド
 cd $PIXMAN_DIR
@@ -33,40 +44,46 @@ make clean
 ./configure pixman_CFLAGS="-I$PIXMAN_DIR/pixman/" pixman_LIBS="-L$PIXMAN_DIR/pixman/.libs/ -lpixman-1"
 make
 
-■ popplerのビルド
+# popplerをビルド
+# libfreetype6-dev, libglib2.0-dev, poppler-data, pango-graphiteパッケージを入れておく必要があります。
 cd $POPPLER_DIR
 ./autogen.sh
 make clean
-./configure CAIRO_CFLAGS="-I$CAIRO_DIR/ -I$CAIRO_DIR/src/" CAIRO_LIBS="-L$CAIRO_DIR/src/.libs/ -lcairo" CFLAGS="-I/usr/include/glib-2.0 -I/usr/include/glib-2.0/include" LIBS="-lglib-2.0" --datarootdir=/usr/share
+./configure CAIRO_VERSION="1.9.14" CAIRO_CFLAGS="-I$CAIRO_DIR/ -I$CAIRO_DIR/src/ -I/usr/include/freetype2" CAIRO_LIBS="-L$CAIRO_DIR/src/.libs/ -lcairo" POPPLER_GLIB_CFLAGS="-I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I$CAIRO_DIR/ -I$CAIRO_DIR/src/" POPPLER_GLIB_LIBS="-lglib-2.0" --datarootdir=/usr/share
 make
 
-■ サンプルプログラムのコンパイルと実行
-# pdftoepub
-gcc -o pdftoepub pdftoepub.c `pkg-config --cflags cairo poppler-glib` -L$CAIRO_DIR/src/.libs -L$POPPLER_DIR/glib/.libs -lcairo -lpoppler-glib -pthread -lgdk-x11-2.0 -lgdk_pixbuf-2.0 -lm -lpangocairo-1.0 -lpango-1.0 -lgio-2.0 -lgobject-2.0 -lgmodule-2.0 -lgthread-2.0 -lrt -lglib-2.0; ./pdftoepub work/PD1213P044.pdf work/PD1213P044
+# pdftoepubをビルド
+cd $PDFTOEPUB_DIR
+make
 
+■ ツールの説明
+・pdftosvg PDF 出力先ディレクトリ [SVGフォント出力(true|false)]
+PDFをSVGファイルに変換します。SVGファイルは１ページ目から順に 1.svg, 2.svg, 3.svg ... という名前で生成されます。通常はフォントは各SVGファイルの中に含まれますが、３番目の引数にtrueを設定すると、出力先ディレクトリにfontsディレクトリを作成し、その中に複数のSVGフォントが font-0.svg, font-1.svg, font-2.svg ... という名前で生成され、各ページのSVGから参照されます。
 
-# 実行
-./pdftosvg test.pdf test.svg 1
+・tootf.pe SVGファイル
+SVGファイルをOTFファイルに変換するFontForgeスクリプトです。実行するためにはFontForgeが必要です。
 
-./svgtest test.pdf
+・pdftepub.pl PDF XMLメタデータ 挿し込むデータディレクトリ
+PDFからEPUBを生成するPerlスクリプトです。pdftosvgによるSVGへの変換、tootf.peによるSVGフォントからOTFへの変換を行い、EPUBファイルを生成します。生成されるEPUBファイルは、PDFの拡張子を.epubに置き換えたものになります。
+
+EPUBに挿し込むデータは挿し込みデータディレクトリにEPUB内と同じディレクトリ構成で配置します。EPUBに挿し込むページは ページ番号-通し番号/main.html という名前で配置しておきます。例えば 3-1/main.html, 3-2/main.html, 3-3/main.html ... という名前で配置すると、それぞれのコンテンツが順に3ページと4ページの間に挿入されます。1ページの前に挿入する場合は 0-1/main.html のようにします。
 
 ■ cairoの修正内容
-Webkitで画像の表示がおかしくなる問題を回避するため、patternのpatternTransformをuseのtransformに移した。
+以下のファイルを修正しています。
+・cairo-svg-surface.c
+・cairo-svg.h
+・cairo-svg-surface-private.h
 
-Webkitでは﹂﹁﹄﹃←↓→↑に相当する文字が、縦書きで勝手に回転されるため、cairoで出力する際にあらかじめ逆方向に回転させるようにした。
+Webkitで画像の表示がおかしくなる問題を回避するため、画像を表示する場合、useのtransformで拡大縮小し、patternのx, yで平行移動するようにした。
 
 出力されるSVGのビューポートは設定通りで、幅と高さは常に100%とした。
 
 <font-face>への対応、外部にフォントファイルを出力できるようにソースの各所を修正した。
 
 show_text_glyphの呼び出しに対応した。
-show_text_glyphだけを呼び出した場合は<font-face>、
-show_glyphだけを呼び出した場合は<symbol>によりテキストを出力する。
+show_text_glyphだけを呼び出した場合は<font-face>、show_glyphだけを呼び出した場合は<symbol>によりテキストを出力する。
 
-縦書き、横書きフォントを内部的に判別できるようにした。
-
-・ 既知の問題
-show_text_glyphとshow_glyphの混合呼び出しには対応していない。おそらく不正確なSVGが出力される。
+path, transform, 色, グリフのパスをそれぞれ別の精度で出力できるようにした（ソース中の#defineで設定）。
 
 ・ 次の関数が加えられています
 
@@ -130,11 +147,10 @@ void
 cairo_svg_fontfile_finish (cairo_svg_fontfile_t   *fontfile);
 
 ■ popplerの修正内容
-画像の解像度を落とさないようにした。
+・CairoOutputDev.css
+cairoが対応している場合は、常にshow_text_glyphを呼び出すようにした。
 
-cairoへの出力でshow_glyphではなくshow_text_glyphを呼び出すようにした。
+画像を72dpiに縮小していたが、これを2.6倍（187.2dpi）にした。
 
-■ SVG-OTF変換について
-CIDに変換し、単一化する必要がある
-
-fontforge -c 'open($1);' font.svg
+・CairoFontFace.cc
+cairo_font_face_tをキャッシュしているが、縦書き横書き（wmode）が違う場合でも同じフォントとして扱われ、縦書き横書きが混在した場合に縦書き部分に横書きフォントが使われてしまうバグがあったので、GtkFontのgetWModeが返す値もキャッシュのキーに加えた。

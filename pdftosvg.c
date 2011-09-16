@@ -9,13 +9,12 @@
 #include <cairo.h>
 #include <cairo-svg.h>
 
-//#define EXTFONT
+#define CAIRO_PATCH
 
 typedef struct write_image_data {
 	int counter;
 	const char* filename;
 	const char* basename;
-	FILE *opf;
 } write_image_data_t;
 
 /* 画像出力関数 */
@@ -29,7 +28,6 @@ write_image_func (void *closure,
   sprintf(filename, "%s-%d.png", data->filename, data->counter);
   status = cairo_surface_write_to_png (surface, filename);
   sprintf(filename, "%s-%d.png", data->basename, data->counter);
-  fprintf(data->opf, "      <item id=\"i%s-%d\" href=\"%s\" media-type=\"image/png\"/>\n", data->basename, data->counter, filename);
   return status;
 }
 
@@ -61,11 +59,11 @@ void html_escape(FILE *fp, const char *str) {
 	}
 }
 
-void write_svg(const char* out_file, PopplerPage *page,
-#ifdef EXTFONT
-	cairo_svg_fontfile_t *fontfile,
+void write_svg(const char* out_file, PopplerPage *page
+#ifdef CAIRO_PATCH
+	, cairo_svg_fontfile_t *fontfile
 #endif
-	FILE *opf) {
+) {
     double width, height;
     cairo_surface_t *surface;
     write_image_data_t data;
@@ -75,21 +73,25 @@ void write_svg(const char* out_file, PopplerPage *page,
 
     poppler_page_get_size (page, &width, &height);
       
-    #ifdef EXTFONT
-    surface = cairo_svg_surface_create_with_fontfile (out_file, width, height, fontfile);
-    #else
+#ifdef CAIRO_PATCH
+    if (fontfile != NULL) {
+    	surface = cairo_svg_surface_create_with_fontfile (out_file, width, height, fontfile);
+    }
+    else {
+    	surface = cairo_svg_surface_create (out_file, width, height);
+    }
+#else
     surface = cairo_svg_surface_create (out_file, width, height);
-    //surface = cairo_image_surface_create (CAIRO_FORMAT_ARGB32, width, height);
-    #endif
+#endif
     cairo_svg_surface_restrict_to_version(surface, CAIRO_SVG_VERSION_1_2);
+    //cairo_svg_set_support_text_glyphs(surface, TRUE);
     status = cairo_surface_status(surface);
     if (status != CAIRO_STATUS_SUCCESS) {
       abort();
     }
 	
     data.counter = 0;
-    data.opf = opf;
-    
+
     data.filename = out_file;
     tmpChar = (char*)strrchr(out_file, '/');
     if (tmpChar == NULL) {
@@ -99,8 +101,10 @@ void write_svg(const char* out_file, PopplerPage *page,
     	data.basename = (const char*)(tmpChar + 1);
     }
     
+#ifdef CAIRO_PATCH
     cairo_svg_surface_set_write_image_func(surface, write_image_func, (void*)&data);
-	
+#endif
+
     cr = cairo_create (surface);
     cairo_rectangle (cr, 0, 0, (int)width, (int)height);
     cairo_clip (cr);
@@ -121,7 +125,6 @@ void write_svg(const char* out_file, PopplerPage *page,
       abort();
     }
     
-    //cairo_surface_write_to_png(surface, out_file);
     cairo_surface_destroy (surface);
 }
 
@@ -140,13 +143,13 @@ int main(int argc, char *argv[])
     
     gchar *absolute, *dir, *uri;
     int page_num, num_pages;
-    #ifdef EXTFONT
-    cairo_svg_fontfile_t *fontfile;
-    #endif
+#ifdef CAIRO_PATCH
+    cairo_svg_fontfile_t *fontfile = NULL;
+#endif
     char *tmpChar;
 
-    if (argc != 3) {
-        printf ("Usage: pdftosvg input_file.pdf dir\n");
+    if (argc < 3 && argc > 4) {
+        printf ("Usage: pdftosvg input_file.pdf dir [separate_fonts]\n");
         return 0;
     }
 
@@ -178,37 +181,41 @@ int main(int argc, char *argv[])
     
     mkdir(out_dir, S_IRWXU | S_IRWXG | S_IRWXO);
 
-    #ifdef EXTFONT
-    sprintf(font_file, "%s/fonts", out_dir);
-    mkdir(font_file, S_IRWXU | S_IRWXG | S_IRWXO);
-    tmpChar = (char*)strrchr(font_file, '/');
-    if (tmpChar == NULL) {
-      tmpChar = (char*)font_file;
+#ifdef CAIRO_PATCH
+    if (argc == 4) {
+		sprintf(font_file, "%s/fonts", out_dir);
+		mkdir(font_file, S_IRWXU | S_IRWXG | S_IRWXO);
+		tmpChar = (char*)strrchr(font_file, '/');
+		if (tmpChar == NULL) {
+		  tmpChar = (char*)font_file;
+		}
+		else {
+		  tmpChar = (char*)(tmpChar + 1);
+		}
+		fontfile = cairo_svg_fontfile_create(tmpChar);
     }
-    else {
-      tmpChar = (char*)(tmpChar + 1);
-    }
-    fontfile = cairo_svg_fontfile_create(tmpChar);
-    #endif
+#endif
     
-    for (page_num = 1; page_num <= num_pages; page_num++) {
+    for (page_num = 1; page_num <= num_pages ;page_num++) {
       page = poppler_document_get_page (document, page_num - 1);
       if (page == NULL) {
 	  printf("poppler fail: page not found\n");
 	  return 1;
       }
       sprintf(out_file, "%s/%d.svg", out_dir, page_num);
-      write_svg(out_file, page,
-		#ifdef EXTFONT
-		fontfile,
-		#endif
-		fp);
+      write_svg(out_file, page
+#ifdef CAIRO_PATCH
+		, fontfile
+#endif
+      );
     }
     g_object_unref (document);
     
-    #ifdef EXTFONT
-    cairo_svg_fontfile_finish(fontfile, font_file);
-    #endif
+#ifdef CAIRO_PATCH
+    if (fontfile != NULL) {
+    	cairo_svg_fontfile_finish(fontfile, font_file);
+    }
+#endif
 
     return 0;
 }
