@@ -84,7 +84,6 @@ void write_svg(const char* out_file, PopplerPage *page
     surface = cairo_svg_surface_create (out_file, width, height);
 #endif
     cairo_svg_surface_restrict_to_version(surface, CAIRO_SVG_VERSION_1_2);
-    //cairo_svg_set_support_text_glyphs(surface, TRUE);
     status = cairo_surface_status(surface);
     if (status != CAIRO_STATUS_SUCCESS) {
       abort();

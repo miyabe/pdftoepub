@@ -85,6 +85,8 @@ show_text_glyphだけを呼び出した場合は<font-face>、show_glyphだけ�
 
 path, transform, 色, グリフのパスをそれぞれ別の精度で出力できるようにした（ソース中の#defineで設定）。
 
+stroke-dasharray の要素に 0 を出力するとchromeで点線が消えてしまうので、最小値を0.2に強制。
+
 ・ 次の関数が加えられています
 
 /*
@@ -154,3 +156,13 @@ cairoが対応している場合は、常にshow_text_glyphを呼び出すよう
 
 ・CairoFontFace.cc
 cairo_font_face_tをキャッシュしているが、縦書き横書き（wmode）が違う場合でも同じフォントとして扱われ、縦書き横書きが混在した場合に縦書き部分に横書きフォントが使われてしまうバグがあったので、GtkFontのgetWModeが返す値もキャッシュのキーに加えた。
+
+・pdftocairo.cc
+ファイル名の形式をname_0000.jpgにした
+-scale-to-x, -scale-to-yを指定したとき、アスペクト比をそのままで最小の解像度になるようにした
+
+■ ブックリスタ
+ちび見の生成
+pdftocairo -f [最初のページ] -l [最後のページ] -scale-to-x 198 -scale-to-y 285 -jpeg [PDF] [JPEGファイル]
+ちら見の生成
+pdftocairo -f [最初のページ] -l [最後のページ] -scale-to 480 -jpeg [PDF] [JPEGファイル]

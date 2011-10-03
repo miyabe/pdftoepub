@@ -1,6 +1,7 @@
 ﻿#!/usr/bin/perl
 use File::Find;
 use File::Basename;
+use File::Copy;
 use Data::UUID;
 use Archive::Zip;
 use XML::XPath;
@@ -12,20 +13,36 @@ use strict;
 
 binmode STDOUT, ":utf8";
 
-my $pdf = $ARGV[0];
-my $metafile = $ARGV[1];
-my $insertdir = $ARGV[2];
+my $dir = $ARGV[0];
+my $contentsID = basename($dir);
 
-my $outdir = $pdf;
-$outdir =~ s/^(.*)\..*/$1/;
-my $outfile = "$outdir.epub";
+my $pdf = "$dir/$contentsID.pdf";
+my $metafile = "$dir/$contentsID.xml";
+my $insertdir = "$dir/ins";
+my $workdir = "$dir/work";
+my $outdir = "$workdir/epub";
+my $outfile = "$workdir/$contentsID"."_eEPUB3.epub";
+my $opf = $contentsID."_opf.opf";
+
+mkdir $workdir;
 
 # Generate SVGs
 {
 	system "./pdftosvg $pdf $outdir true";
-	system "./tootf.pe $outdir/fonts/*.svg";
+	
+	opendir my $dir, "$outdir/fonts";
+	my @files = grep {/^.+\.svg$/} readdir $dir;
+	foreach my $file (@files) {
+		if ($file =~ /^.+\.svg$/) {
+			system "./tootf.pe $outdir/fonts/$file";
+		}
+	}
+	closedir $dir;
+	
 	system "rm $outdir/fonts/*.svg";
-	system "cp -r $insertdir/* $outdir";
+	if ($insertdir) {
+		system "cp -r $insertdir/* $outdir";
+	}
 	
 	opendir my $dir, $outdir;
 	my @files = grep {/^.+\.svg$/} readdir $dir;
@@ -55,6 +72,7 @@ my $uuid;
 my ($publisher, $name, $issued, $ppd, $modified);
 {
 	my $xp = XML::XPath->new(filename => $metafile);
+	
 	$publisher = $xp->findvalue("/Content/PublisherInfo/Name/text()")->value;
 	$publisher = encode_entities($publisher, '<>&"');
 	
@@ -133,17 +151,17 @@ my ($width, $height);
 <?xml version="1.0" encoding="utf-8"?>
 <container xmlns="urn:oasis:names:tc:opendocument:xmlns:container" version="1.0">
   <rootfiles>
-    <rootfile full-path="content.opf" media-type="application/oebps-package+xml"/>
+    <rootfile full-path="$opf" media-type="application/oebps-package+xml"/>
   </rootfiles>
 </container>
 EOD
     close($fp);
 }
 
-# content.opf
+# OPF
 {
 	my $fp;
-    open($fp, "> $outdir/content.opf");
+    open($fp, "> $outdir/$opf");
     binmode $fp, ":utf8";
     print $fp <<"EOD";
 <?xml version="1.0" encoding="utf-8"?>
@@ -195,7 +213,7 @@ EOD
 		-f $_ or return;
 		my $basename = substr($File::Find::name, length($outdir) + 1);
 		$basename =~ /^mimetype$/ and return;
-		$basename =~ /^content\.opf$/ and return;
+		$basename =~ /^*.\.opf$/ and return;
 		$basename =~ /^nav\.xhtml$/ and return;
 		$basename =~ /^.+\.epub$/ and return;
 		$basename =~ /^META-INF\/.*$/ and return;
@@ -273,6 +291,7 @@ EOD
 
     close($fp);
 }
+copy "$outdir/$opf", "$workdir/$opf";
 
 # zip
 if (-e $outfile) {
