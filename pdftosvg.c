@@ -110,21 +110,53 @@ void write_svg(const char* out_file, PopplerPage *page
     cairo_new_path (cr);
     
     poppler_page_render (page, cr);
-    
-    g_object_unref (page);
 
     status = cairo_status(cr);
     if (status)
         printf("%s\n", cairo_status_to_string (status));
 
     cairo_destroy (cr);
-    
+
     status = cairo_surface_status(surface);
     if (status != CAIRO_STATUS_SUCCESS) {
       abort();
     }
-    
+
+    GList *mapping = poppler_page_get_link_mapping (page);
+    gint n_links = g_list_length (mapping);
+    GList *l;
+    for (l = mapping; l; l = g_list_next (l)) {
+    	PopplerLinkMapping *lmapping = (PopplerLinkMapping*)l->data;
+		double x = lmapping->area.x1;
+		double y = lmapping->area.y1;
+		y = height - y;
+		double w = lmapping->area.x2 - lmapping->area.x1;
+		double h = lmapping->area.y2 - lmapping->area.y1;
+		y -= h;
+    	switch (lmapping->action->type) {
+    	case POPPLER_ACTION_GOTO_DEST: {
+    		PopplerActionGotoDest *dest = (PopplerActionGotoDest*)lmapping->action;
+    		char uri[256];
+    		sprintf(uri, "%d.svg", dest->dest->page_num);
+    		cairo_svg_surface_link(surface,
+    				uri, x, y, w, h);
+    	}
+    		break;
+
+    	case POPPLER_ACTION_URI:
+    	{
+    		PopplerActionUri *auri = (PopplerActionUri*)lmapping->action;
+    		cairo_svg_surface_link(surface,
+    				auri->uri, x, y, w, h);
+    	}
+        	break;
+    	}
+    }
+    poppler_page_free_link_mapping (mapping);
+
     cairo_surface_destroy (surface);
+
+    g_object_unref (page);
 }
 
 int main(int argc, char *argv[])

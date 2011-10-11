@@ -23,42 +23,46 @@ my $workdir = "$dir/work";
 my $outdir = "$workdir/epub";
 my $outfile = "$workdir/$contentsID"."_eEPUB3.epub";
 my $opf = $contentsID."_opf.opf";
+my $otf = 0;
 
 mkdir $workdir;
 
 # Generate SVGs
 {
-	system "./pdftosvg $pdf $outdir true";
+	system "./pdftosvg $pdf $outdir".($otf ? ' true' : '');
 	
-	opendir my $dir, "$outdir/fonts";
-	my @files = grep {/^.+\.svg$/} readdir $dir;
-	foreach my $file (@files) {
-		if ($file =~ /^.+\.svg$/) {
-			system "./tootf.pe $outdir/fonts/$file";
+	if ($otf) {
+		opendir my $dir, "$outdir/fonts";
+		my @files = grep {/^.+\.svg$/} readdir $dir;
+		foreach my $file (@files) {
+			if ($file =~ /^.+\.svg$/) {
+				system "./tootf.pe $outdir/fonts/$file";
+			}
 		}
+		closedir $dir;
+		
+		system "rm $outdir/fonts/*.svg";
+		
+		opendir my $dir, $outdir;
+		my @files = grep {/^.+\.svg$/} readdir $dir;
+		foreach my $file (@files) {
+			open my $in, "< $outdir/$file";
+			open my $out, "> $outdir/$file.tmp";
+			foreach my $line (<$in>) {
+				$line =~ s/src: url\(\"fonts\/font\-(\d+)\.svg\"\) format\(\"svg\"\);/src: url\(\"fonts\/font\-$1\.otf\"\) format\(\"opentype\"\);/s;
+				print $out $line;
+			}
+			close $in;
+			close $out;
+			unlink "$outdir/$file";
+			rename "$outdir/$file.tmp", "$outdir/$file";
+		}
+		closedir $dir;
 	}
-	closedir $dir;
 	
-	system "rm $outdir/fonts/*.svg";
 	if ($insertdir) {
 		system "cp -r $insertdir/* $outdir";
 	}
-	
-	opendir my $dir, $outdir;
-	my @files = grep {/^.+\.svg$/} readdir $dir;
-	foreach my $file (@files) {
-		open my $in, "< $outdir/$file";
-		open my $out, "> $outdir/$file.tmp";
-		foreach my $line (<$in>) {
-			$line =~ s/src: url\(\"fonts\/font\-(\d+)\.svg\"\) format\(\"svg\"\);/src: url\(\"fonts\/font\-$1\.otf\"\) format\(\"opentype\"\);/s;
-			print $out $line;
-		}
-		close $in;
-		close $out;
-		unlink "$outdir/$file";
-		rename "$outdir/$file.tmp", "$outdir/$file";
-	}
-	closedir $dir;
 }
 
 # Generate BookID.
@@ -184,7 +188,6 @@ EOD
     <meta property="prism:volume">26</meta>
     <meta property="prism:number">34</meta>
     <meta property="layout:orientation">auto</meta>
-    <meta property="layout:page-spread">double</meta>
     <meta property="layout:fixed-layout">true</meta>
     <meta property="layout:overflow-scroll">true</meta>
     <meta property="layout:viewport">width=$width, height=$height</meta>
