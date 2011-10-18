@@ -31,7 +31,7 @@ mkdir $workdir;
 
 # Generate SVGs
 {
-	#system "./pdftosvg $pdfdir $outdir".($otf ? ' true' : '');
+	system "./pdftosvg $pdfdir $outdir".($otf ? ' true' : '');
 	
 	if ($otf) {
 		opendir my $dir, "$outdir/fonts";
