@@ -34,6 +34,8 @@ mkdir $workdir;
 # Generate SVGs
 {
 	if ($raster) {
+		mkdir $workdir;
+		mkdir $outdir;
 		if (-d $pdfdir) {
 			opendir my $dir, "$pdfdir";
 			my @files = grep {/^.+\.pdf$/} readdir $dir;
