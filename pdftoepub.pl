@@ -20,7 +20,7 @@ my $contentsID = basename($dir);
 #my $pdfdir = "$dir/$contentsID.pdf";
 my $pdfdir = "$dir/magazine";
 my $metafile = "$dir/$contentsID.xml";
-my $insertdir = "work/ins";
+my $insertdir = "ins";
 my $workdir = "$dir/work";
 my $outdir = "$workdir/epub";
 my $outfile = "$workdir/$contentsID"."_eEPUB3.epub";
@@ -47,8 +47,10 @@ mkdir $workdir;
 		else {
 			system "../poppler/utils/pdftoppm -jpeg -scale-to 1280 $pdfdir $outdir/";
 		}
-		system "../poppler/utils/pdftoppm -jpeg -scale-to 1280 $dir/cover.pdf > $outdir/00000.jpg";
-
+		if (-f "$dir/cover.pdf") {
+			system "../poppler/utils/pdftoppm -jpeg -scale-to 1280 $dir/cover.pdf > $outdir/00000.jpg";
+		}
+		
 		opendir my $dir, "$outdir";
 		my @files = grep {/^.+\.jpg$/} readdir $dir;
 		foreach my $file (@files) {
@@ -120,7 +122,7 @@ my ($publisher, $publisher_kana, $name, $kana, $cover_date, $sales_date, $sales_
 	$publisher = encode_entities($publisher, '<>&"');
 	
 	$publisher_kana = $xp->findvalue("/Content/PublisherInfo/Kana/text()")->value;
-	$publisher_kana = encode_entities($publisher, '<>&"');
+	$publisher_kana = encode_entities($publisher_kana, '<>&"');
 	
 	$name = $xp->findvalue("/Content/MagazineInfo/Name/text()")->value;
 	$name = encode_entities($name, '<>&"');
@@ -153,7 +155,7 @@ my ($publisher, $publisher_kana, $name, $kana, $cover_date, $sales_date, $sales_
 <!DOCTYPE html>
 <html lang="ja"
       xmlns="http://www.w3.org/1999/xhtml"
-      xmlns:epub="http://www,idpf.org/2007/ops">
+      xmlns:epub="http://www.idpf.org/2007/ops">
   <head>
     <meta charset="UTF-8" />
     <title>$name</title>
@@ -167,13 +169,9 @@ EOD
 		my $title = $xp->findvalue("Title/text()", $index)->value;
 		$title = encode_entities($title, '<>&"');
 		my $startPage = $xp->findvalue("StartPage/text()", $index)->value;
+		my $file = sprintf("%05d.svg", $startPage);
 		print $fp <<"EOD";
-		if (-f "$outdir/.jpg")
-      		<li><a href="$startPage.jpg">$title</a></li>
-      	elsif (-f "$outdir/.png")
-      		<li><a href="$startPage.png">$title</a></li>
-      	else
-      		<li><a href="$startPage.svg">$title</a></li>
+		<li><a href="$file">$title</a></li>
 EOD
 	}
 		print $fp <<"EOD";
@@ -267,7 +265,7 @@ EOD
 
 # マニフェスト
 	# nav
-	print $fp "    <index id=\"nav\" href=\"nav.xhtml\" properties=\"nav\" media-type=\"application/xhtml+xml\"/>\n";
+	print $fp "    <item id=\"nav\" href=\"nav.xhtml\" properties=\"nav\" media-type=\"application/xhtml+xml\"/>\n";
 
 	#-- ディレクトリを指定(複数の指定可能) --#
 	my @directories_to_search = ($outdir);
@@ -387,5 +385,8 @@ if (-e $outfile) {
 	unlink $outfile;
 }
 my $zip = Archive::Zip->new();
-$zip->addTree($outdir, '');
+$zip->addFile("$outdir/mimetype", 'mimetype');
+my ($mimetype) = $zip->members();
+$mimetype->desiredCompressionLevel(0);
+$zip->addTree($outdir, '', sub { !/^mimetype$/ });
 $zip->writeToFileNamed($outfile)
