@@ -1,4 +1,4 @@
-﻿#!/usr/bin/perl
+#!/usr/bin/perl
 use File::Find;
 use File::Basename;
 use File::Copy;
@@ -175,7 +175,7 @@ EOD
 		foreach my $index ($indexList->get_nodelist) {
 			my $title = $xp->findvalue("Title/text()", $index)->value;
 			$title = encode_entities($title, '<>&"');
-			my $startPage = $xp->findvalue("StartPage/text()", $index)->value;
+			my $startPage = $xp->findvalue("StartPage/text()", $index)->value - 1;
 			my $file = sprintf("%05d.svg", $startPage);
 			print $fp <<"EOD";
 		<li><a href="$file">$title</a></li>

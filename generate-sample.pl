@@ -32,7 +32,7 @@ sub generate {
 	copy("$workdir/epub/$opf", "$destdir/$opf");
 	
 	# Read meta data.
-	my ($sampleType, $startPage, $endPage);
+	our ($sampleType, $startPage, $endPage);
 	sub outputSample {
 		do {
 			my $pdf = sprintf("$pdfdir/%05d.pdf", $startPage);
