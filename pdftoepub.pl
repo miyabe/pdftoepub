@@ -290,7 +290,6 @@ EOD
 			$basename =~ /^.+\.epub$/ and return;
 			$basename =~ /^META-INF\/.*$/ and return;
 			$basename =~ /^.*\.svg$/ and return;
-		print "$basename \n";
 			
 			++$i;
 			print $fp "    <item id=\"r$i\" href=\"$basename\" media-type=\"";
@@ -386,7 +385,6 @@ EOD
 	
 	    close($fp);
 	}
-	copy "$outdir/$opf", "$workdir/$opf";
 	
 	# zip
 	if (-e $outfile) {
@@ -410,7 +408,7 @@ my $jpg = 0;
 
 sub process {
 	if (!$jpg) {
-		my $destdir = "$dest/png";
+		my $destdir = "$dest/raster";
 		mkdir $destdir;
 		transcode $_[0], $destdir, 1;
 		$destdir = "$dest/svg";
@@ -421,7 +419,6 @@ sub process {
 		transcode $_[0], $dest, 1;
 	}
 }
-my @targets;
 if ($src =~ /^.+\/$/) {
 	my $dir;
 	opendir($dir, $src);
