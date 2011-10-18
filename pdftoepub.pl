@@ -7,6 +7,7 @@ use Archive::Zip;
 use XML::XPath;
 use Date::Format;
 use HTML::Entities;
+use Image::Size;
 
 use utf8;
 use strict;
@@ -38,11 +39,29 @@ mkdir $workdir;
 			my @files = grep {/^.+\.pdf$/} readdir $dir;
 			foreach my $file (@files) {
 				my ($num) = ($file =~ /^(\d+)\.pdf$/);
-				system "../poppler/utils/pdftoppm -jpeg -scale-to 1280 $pdfdir/$file > $outdir/$num.jpg";
+				#system "../poppler/utils/pdftoppm -jpeg -scale-to 1280 $pdfdir/$file > $outdir/$num.jpg";
 			}
 		}
 		else {
-			system "../poppler/utils/pdftoppm -jpeg -scale-to 1280 $pdfdir $outdir/";
+			#system "../poppler/utils/pdftoppm -jpeg -scale-to 1280 $pdfdir $outdir/";
+		}
+		system "../poppler/utils/pdftoppm -jpeg -scale-to 1280 $dir/cover.pdf > $outdir/00000.jpg";
+
+		opendir my $dir, "$outdir";
+		my @files = grep {/^.+\.jpg$/} readdir $dir;
+		foreach my $file (@files) {
+			my ($num) = ($file =~ /^(\d+)\.jpg$/);
+			my $fp;
+			my ($w, $h) = imgsize("$outdir/$file");
+			open($fp, "> $outdir/$num.svg");
+			binmode $fp, ":utf8";
+			print $fp <<"EOD";
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+  width="100%" height="100%" viewBox="0 0 $w $h">
+  <image width="$w" height="$h" xlink:href="$file" />
+</svg>
+EOD
+			close($fp);
 		}
 	}
 	else {
@@ -165,19 +184,20 @@ EOD
 }
 
 my @files;
-# Check SVG viewBox.
-my ($width, $height);
 {
 	my $dir;
 	opendir($dir, $outdir);
-	@files = sort grep {/^.+\.svg$/ or /^.+\.jpg$/ or /^.+\.png$/} readdir($dir);
+	@files = sort grep {/^.+\.svg$/} readdir($dir);
 	closedir($dir);
-	
-	my $file = "$outdir/size";
-	my $fp;
-	open($fp, "< $file");
-	($width, $height) = split(/ /, <$fp>);
-	close($fp);
+}
+
+# Check SVG viewBox.
+my ($width, $height);
+{
+	my $xp = XML::XPath->new(filename => "$outdir/".$files[0]);
+	my $viewBox = $xp->findvalue('/svg/@viewBox')->value;
+	my ($x, $y);
+	($x, $y, $width, $height) = split(/ /, $viewBox);
 }
 
 # mimetype
@@ -269,8 +289,6 @@ EOD
 		$basename =~ /^.+\.epub$/ and return;
 		$basename =~ /^META-INF\/.*$/ and return;
 		$basename =~ /^.*\.svg$/ and return;
-		$basename =~ /^.*\.jpg$/ and !($basename =~ /^images\/.*$/) and return;
-		$basename =~ /^.*\.png$/ and !($basename =~ /^images\/.*$/) and return;
 		
 		++$i;
 		print $fp "    <item id=\"r$i\" href=\"$basename\" media-type=\"";
