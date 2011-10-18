@@ -389,4 +389,7 @@ $zip->addFile("$outdir/mimetype", 'mimetype');
 my ($mimetype) = $zip->members();
 $mimetype->desiredCompressionLevel(0);
 $zip->addTree($outdir, '', sub { !/^mimetype$/ });
-$zip->writeToFileNamed($outfile)
+$zip->writeToFileNamed($outfile);
+
+# check
+system "java -cp lib/jing.jar:lib/saxon9he.jar:lib/flute.jar:lib/sac.jar -jar epubcheck-3.0b2.jar $outfile";
