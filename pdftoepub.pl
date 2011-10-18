@@ -405,11 +405,11 @@ EOD
 
 my $src = $ARGV[0];
 my $dest = $ARGV[1];
-my $svg = 0;
-(@ARGV >= 3) and $svg = $ARGV[2];
+my $jpg = 0;
+(@ARGV >= 3) and $jpg = $ARGV[2];
 
 sub process {
-	if ($svg) {
+	if (!$jpg) {
 		my $destdir = "$dest/png";
 		mkdir $destdir;
 		transcode $_[0], $destdir, 1;
