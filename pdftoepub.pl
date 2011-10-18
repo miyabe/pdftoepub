@@ -39,11 +39,11 @@ mkdir $workdir;
 			my @files = grep {/^.+\.pdf$/} readdir $dir;
 			foreach my $file (@files) {
 				my ($num) = ($file =~ /^(\d+)\.pdf$/);
-				#system "../poppler/utils/pdftoppm -jpeg -scale-to 1280 $pdfdir/$file > $outdir/$num.jpg";
+				system "../poppler/utils/pdftoppm -jpeg -scale-to 1280 $pdfdir/$file > $outdir/$num.jpg";
 			}
 		}
 		else {
-			#system "../poppler/utils/pdftoppm -jpeg -scale-to 1280 $pdfdir $outdir/";
+			system "../poppler/utils/pdftoppm -jpeg -scale-to 1280 $pdfdir $outdir/";
 		}
 		system "../poppler/utils/pdftoppm -jpeg -scale-to 1280 $dir/cover.pdf > $outdir/00000.jpg";
 
