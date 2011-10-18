@@ -5,11 +5,60 @@
 #include <sys/types.h>
 #include <dirent.h>
 
+#include <jpeglib.h>
+#include <libxml/SAX.h>
+
 #include <poppler.h>
 #include <cairo.h>
 #include <cairo-svg.h>
 
 #define CAIRO_PATCH
+
+#define VIEW_HEIGHT 1280.0
+
+void cairo_surface_write_to_jpg (cairo_surface_t *sf, char *name){
+	unsigned char *pixels = cairo_image_surface_get_data(sf);
+	int stride = cairo_image_surface_get_stride(sf);
+
+	FILE *fp = fopen(name, "wb");
+
+	struct jpeg_compress_struct cinfo;
+	struct jpeg_error_mgr jerr;
+	cinfo.err = jpeg_std_error(&jerr);
+	jpeg_create_compress(&cinfo);
+	jpeg_stdio_dest(&cinfo, fp);
+
+	unsigned char line[stride];
+	JSAMPROW row_pointer[1];
+	row_pointer[0] = (JSAMPROW)&line;
+
+	cinfo.image_width = (int)cairo_image_surface_get_width (sf);
+	cinfo.image_height = (int)cairo_image_surface_get_height (sf);
+	cinfo.input_components = 3;
+	cinfo.in_color_space = JCS_RGB;
+
+	jpeg_set_defaults(&cinfo);
+	jpeg_set_quality(&cinfo, 100, TRUE);
+	jpeg_start_compress(&cinfo, TRUE);
+
+	int i, j, k;
+	for ( i = 0; i < cinfo.image_height; i++ ) {
+		k = 0;
+		for ( j = 0; j < stride; j += 4 ) {
+			line[k] = pixels[j + 2];
+			line[k + 1] = pixels[j + 1];
+			line[k + 2] = pixels[j];
+			k += 3;
+		}
+		jpeg_write_scanlines(&cinfo, row_pointer, 1);
+		pixels += stride;
+	}
+
+	jpeg_finish_compress(&cinfo);
+	jpeg_destroy_compress(&cinfo);
+
+	fclose(fp);
+}
 
 typedef struct write_image_data {
 	int counter;
@@ -27,7 +76,22 @@ write_image_func (void *closure,
   data->counter++;
   sprintf(filename, "%s-%d.png", data->filename, data->counter);
   status = cairo_surface_write_to_png (surface, filename);
-  sprintf(filename, "%s-%d.png", data->basename, data->counter);
+  if (status != CAIRO_STATUS_SUCCESS)
+	return status;
+
+  struct stat buf;
+  stat(filename, &buf);
+  if (0/*buf.st_size > 1000000*/) {
+	  cairo_surface_t *png = cairo_image_surface_create_from_png(filename);
+	  remove(filename);
+	  sprintf(filename, "%s-%d.jpg", data->filename, data->counter);
+	  cairo_surface_write_to_jpg (png, filename);
+	  sprintf(filename, "%s-%d.jpg", data->basename, data->counter);
+	  cairo_surface_destroy(png);
+  }
+  else {
+	  sprintf(filename, "%s-%d.png", data->basename, data->counter);
+  }
   return status;
 }
 
@@ -59,20 +123,89 @@ void html_escape(FILE *fp, const char *str) {
 	}
 }
 
-void write_svg(const char* out_file, PopplerPage *page
+void write_image(int page_num, const char *out_dir, PopplerPage *page)
+{
+    char out_file[256];
+    double s, width, height;
+    cairo_surface_t *surface;
+    cairo_t *cr;
+    cairo_status_t status;
+
+    poppler_page_get_size (page, &width, &height);
+    s = VIEW_HEIGHT / height;
+    width *= s;
+    height = VIEW_HEIGHT;
+
+    surface = cairo_image_surface_create (CAIRO_FORMAT_ARGB32, width, height);
+
+    status = cairo_surface_status(surface);
+    if (status != CAIRO_STATUS_SUCCESS) {
+      abort();
+    }
+
+    cr = cairo_create (surface);
+    cairo_rectangle (cr, 0, 0, (int)width, (int)height);
+    cairo_clip (cr);
+    cairo_new_path (cr);
+    cairo_scale(cr, s, s);
+    cairo_set_source_rgb(cr, 1, 1, 1);
+    cairo_paint(cr);
+
+    poppler_page_render (page, cr);
+
+    status = cairo_status(cr);
+    if (status)
+        printf("%s\n", cairo_status_to_string (status));
+
+    cairo_destroy (cr);
+
+    status = cairo_surface_status(surface);
+    if (status != CAIRO_STATUS_SUCCESS) {
+      abort();
+    }
+
+	 sprintf(out_file, "%s/%05d.png", out_dir, page_num);
+    cairo_surface_write_to_png(surface, out_file);
+
+    struct stat buf;
+    stat(out_file, &buf);
+    if (1/* buf.st_size > 1000000 */) {
+  	   cairo_surface_t *png = cairo_image_surface_create_from_png(out_file);
+       remove(out_file);
+	   sprintf(out_file, "%s/%05d.jpg", out_dir, page_num);
+      cairo_surface_write_to_jpg(surface, out_file);
+      cairo_surface_destroy(png);
+    }
+
+    cairo_surface_destroy (surface);
+}
+
+void OnStartElement(void* user_data, const xmlChar* name, const xmlChar** atts) {
+	int *elements = user_data;
+	(*elements)++;
+}
+
+void write_svg(int page_num, const char *out_dir, PopplerPage *page
 #ifdef CAIRO_PATCH
 	, cairo_svg_fontfile_t *fontfile
 #endif
 ) {
-    double width, height;
+    char out_file[256];
+    double s, width, height;
     cairo_surface_t *surface;
     write_image_data_t data;
     cairo_t *cr;
     cairo_status_t status;
     char *tmpChar;
+    char filename[256];
+
+	sprintf(out_file, "%s/%05d.svg", out_dir, page_num);
 
     poppler_page_get_size (page, &width, &height);
-      
+    s = VIEW_HEIGHT / height;
+    width *= s;
+    height = VIEW_HEIGHT;
+
 #ifdef CAIRO_PATCH
     if (fontfile != NULL) {
     	surface = cairo_svg_surface_create_with_fontfile (out_file, width, height, fontfile);
@@ -83,7 +216,7 @@ void write_svg(const char* out_file, PopplerPage *page
 #else
     surface = cairo_svg_surface_create (out_file, width, height);
 #endif
-    cairo_svg_surface_restrict_to_version(surface, CAIRO_SVG_VERSION_1_2);
+    cairo_svg_surface_restrict_to_version(surface, CAIRO_SVG_VERSION_1_1);
     status = cairo_surface_status(surface);
     if (status != CAIRO_STATUS_SUCCESS) {
       abort();
@@ -91,15 +224,10 @@ void write_svg(const char* out_file, PopplerPage *page
 	
     data.counter = 0;
 
-    data.filename = out_file;
-    tmpChar = (char*)strrchr(out_file, '/');
-    if (tmpChar == NULL) {
-	    data.basename = (const char*)out_file;
-    }
-    else {
-    	data.basename = (const char*)(tmpChar + 1);
-    }
-    
+    sprintf(filename, "%s/images/%05d", out_dir, page_num);
+    data.filename = filename;
+    data.basename = filename + strlen(out_dir) + 1;;
+
 #ifdef CAIRO_PATCH
     cairo_svg_surface_set_write_image_func(surface, write_image_func, (void*)&data);
 #endif
@@ -108,6 +236,7 @@ void write_svg(const char* out_file, PopplerPage *page
     cairo_rectangle (cr, 0, 0, (int)width, (int)height);
     cairo_clip (cr);
     cairo_new_path (cr);
+    cairo_scale(cr, s, s);
     
     poppler_page_render (page, cr);
 
@@ -156,6 +285,23 @@ void write_svg(const char* out_file, PopplerPage *page
 
     cairo_surface_destroy (surface);
 
+    int elements;
+    xmlSAXHandler sax;
+    memset(&sax, 0, sizeof(sax));
+    sax.startElement = OnStartElement;
+    xmlSAXUserParseFile(&sax, &elements, out_file);
+
+    if (elements > 500000) {
+		remove(out_file);
+		int i;
+		for(i = 1; ; ++i) {
+			sprintf(filename, "%s/images/%05d-%d.png", out_dir, page_num, i);
+			if (remove(filename))
+				break;
+		}
+		write_image(page_num, out_dir, page);
+    }
+
     g_object_unref (page);
 }
 
@@ -166,7 +312,6 @@ int main(int argc, char *argv[])
     GError *error;
     const char *pdf_file;
     const char *out_dir;
-    char out_file[256];
     char font_file[256];
     
     FILE *fp;
@@ -179,8 +324,8 @@ int main(int argc, char *argv[])
 #endif
     char *tmpChar;
 
-    if (argc < 3 && argc > 4) {
-        printf ("Usage: pdftosvg input_file.pdf dir [separate_fonts]\n");
+    if (argc < 3 && argc > 5) {
+        printf ("Usage: pdftosvg input_file.pdf dir [separate_fonts] [page]\n");
         return 0;
     }
 
@@ -188,32 +333,13 @@ int main(int argc, char *argv[])
     out_dir = argv[2];
     g_type_init ();
     error = NULL;
-
-    if (g_path_is_absolute(pdf_file)) {
-        absolute = g_strdup (pdf_file);
-    } else {
-        gchar *dir = g_get_current_dir ();
-        absolute = g_build_filename (dir, pdf_file, (gchar *) 0);
-        free (dir);
-    }
-    uri = g_filename_to_uri (absolute, NULL, &error);
-    free (absolute);
-    if (uri == NULL) {
-        printf("%s\n", error->message);
-        return 1;
-    }
-
-    document = poppler_document_new_from_file (uri, NULL, &error);
-    if (document == NULL) {
-        printf("%s\n", error->message);
-        return 1;
-    }
-    num_pages = poppler_document_get_n_pages (document);
     
     mkdir(out_dir, S_IRWXU | S_IRWXG | S_IRWXO);
+	sprintf(font_file, "%s/images", out_dir);
+	mkdir(font_file, S_IRWXU | S_IRWXG | S_IRWXO);
 
 #ifdef CAIRO_PATCH
-    if (argc == 4) {
+    if (argc >= 4 && strcmp(argv[3], "true") == 0) {
 		sprintf(font_file, "%s/fonts", out_dir);
 		mkdir(font_file, S_IRWXU | S_IRWXG | S_IRWXO);
 		tmpChar = (char*)strrchr(font_file, '/');
@@ -226,21 +352,123 @@ int main(int argc, char *argv[])
 		fontfile = cairo_svg_fontfile_create(tmpChar);
     }
 #endif
-    
-    for (page_num = 1; page_num <= num_pages ;page_num++) {
-      page = poppler_document_get_page (document, page_num - 1);
-      if (page == NULL) {
-	  printf("poppler fail: page not found\n");
-	  return 1;
-      }
-      sprintf(out_file, "%s/%d.svg", out_dir, page_num);
-      write_svg(out_file, page
-#ifdef CAIRO_PATCH
-		, fontfile
-#endif
-      );
+
+    if (strcmp(".pdf", pdf_file + strlen(pdf_file) - 4) == 0) {
+		if (g_path_is_absolute(pdf_file)) {
+			absolute = g_strdup (pdf_file);
+		} else {
+			gchar *dir = g_get_current_dir ();
+			absolute = g_build_filename (dir, pdf_file, (gchar *) 0);
+			free (dir);
+		}
+		uri = g_filename_to_uri (absolute, NULL, &error);
+		free (absolute);
+		if (uri == NULL) {
+			printf("%s\n", error->message);
+			return 1;
+		}
+
+		document = poppler_document_new_from_file (uri, NULL, &error);
+		if (document == NULL) {
+			printf("%s\n", error->message);
+			return 1;
+		}
+		num_pages = poppler_document_get_n_pages (document);
+
+		int start = 1, end = num_pages;
+		if (argc >= 5) {
+			start = end = atoi(argv[4]);
+		}
+		for (page_num = start; page_num <= end ;page_num++) {
+		  page = poppler_document_get_page (document, page_num - 1);
+		  if (page_num == start) {
+			  double width, height;
+			  char filename[256];
+			  poppler_page_get_size (page, &width, &height);
+			  width *= VIEW_HEIGHT / height;
+			  height = VIEW_HEIGHT;
+			  sprintf(filename, "%s/size", out_dir);
+			  fp = fopen(filename, "w");
+			  fprintf(fp, "%d %d", (int)width, (int)height);
+			  fclose(fp);
+		  }
+		  if (page == NULL) {
+		  printf("poppler fail: page not found\n");
+		  return 1;
+		  }
+		  write_svg(page_num, out_dir, page
+	#ifdef CAIRO_PATCH
+			, fontfile
+	#endif
+		  );
+		}
+		g_object_unref (document);
     }
-    g_object_unref (document);
+    else {
+    	char firstPage = 1;
+    	DIR *dir = opendir(pdf_file);
+    	struct dirent *ent;
+		while ((ent = readdir(dir)) != NULL) {
+			if (strcmp(ent->d_name, "..") == 0)
+				continue;
+			if (strcmp(ent->d_name, ".") == 0) {
+				page_num = 0;
+				sprintf(filename, "%s/../cover.pdf", pdf_file);
+			}
+			else {
+				sscanf(ent->d_name, "%d.pdf", &page_num);
+				sprintf(filename, "%s/%s", pdf_file, ent->d_name);
+			}
+
+			if (g_path_is_absolute(filename)) {
+				absolute = g_strdup (filename);
+			} else {
+				gchar *dir = g_get_current_dir ();
+				absolute = g_build_filename (dir, filename, (gchar *) 0);
+				free (dir);
+			}
+			uri = g_filename_to_uri (absolute, NULL, &error);
+			free (absolute);
+			if (uri == NULL) {
+				printf("%s\n", error->message);
+				return 1;
+			}
+
+			document = poppler_document_new_from_file (uri, NULL, &error);
+			if (document == NULL) {
+				printf("%s\n", error->message);
+				return 1;
+			}
+			num_pages = poppler_document_get_n_pages (document);
+			if (num_pages != 1) {
+				  printf("not single page pdf\n");
+				  return 1;
+			}
+			page = poppler_document_get_page (document, 0);
+			if (page == NULL) {
+			  printf("poppler fail: Page not found\n");
+			  return 1;
+			}
+			if (page_num >= 1 && firstPage) {
+			  double width, height;
+			  char filename[256];
+			  poppler_page_get_size (page, &width, &height);
+			  width *= VIEW_HEIGHT / height;
+			  height = VIEW_HEIGHT;
+			  sprintf(filename, "%s/size", out_dir);
+			  fp = fopen(filename, "w");
+			  fprintf(fp, "%d %d", (int)width, (int)height);
+			  fclose(fp);
+			  firstPage = 0;
+			}
+			write_svg(page_num, out_dir, page
+		#ifdef CAIRO_PATCH
+				, fontfile
+		#endif
+			);
+		}
+		closedir(dir);
+    }
     
 #ifdef CAIRO_PATCH
     if (fontfile != NULL) {

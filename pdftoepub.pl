@@ -16,12 +16,14 @@ binmode STDOUT, ":utf8";
 my $dir = $ARGV[0];
 my $contentsID = basename($dir);
 
-my $pdf = "$dir/$contentsID.pdf";
+#my $pdfdir = "$dir/$contentsID.pdf";
+my $pdfdir = "$dir/magazine";
 my $metafile = "$dir/$contentsID.xml";
-my $insertdir = "$dir/ins";
+my $insertdir = "work/ins";
 my $workdir = "$dir/work";
 my $outdir = "$workdir/epub";
 my $outfile = "$workdir/$contentsID"."_eEPUB3.epub";
+#my $outfile = "out/$contentsID"."_eEPUB3.epub";
 my $opf = $contentsID."_opf.opf";
 my $otf = 0;
 
@@ -29,7 +31,7 @@ mkdir $workdir;
 
 # Generate SVGs
 {
-	system "./pdftosvg $pdf $outdir".($otf ? ' true' : '');
+	#system "./pdftosvg $pdfdir $outdir".($otf ? ' true' : '');
 	
 	if ($otf) {
 		opendir my $dir, "$outdir/fonts";
@@ -73,15 +75,30 @@ my $uuid;
 }
 
 # Read meta data.
-my ($publisher, $name, $issued, $ppd, $modified);
+my ($publisher, $publisher_kana, $name, $kana, $cover_date, $sales_date, $sales_yyyy, $sales_mm, $sales_dd, $introduce, $issued, $ppd, $modified);
 {
 	my $xp = XML::XPath->new(filename => $metafile);
 	
 	$publisher = $xp->findvalue("/Content/PublisherInfo/Name/text()")->value;
 	$publisher = encode_entities($publisher, '<>&"');
 	
+	$publisher_kana = $xp->findvalue("/Content/PublisherInfo/Kana/text()")->value;
+	$publisher_kana = encode_entities($publisher, '<>&"');
+	
 	$name = $xp->findvalue("/Content/MagazineInfo/Name/text()")->value;
 	$name = encode_entities($name, '<>&"');
+	
+	$kana = $xp->findvalue("/Content/MagazineInfo/Kana/text()")->value;
+	$kana = encode_entities($kana, '<>&"');
+	
+	$cover_date = $xp->findvalue("/Content/CoverDate/text()")->value;
+	$cover_date = encode_entities($cover_date, '<>&"');
+	
+	$sales_date = $xp->findvalue("/Content/SalesDate/text()")->value;
+	($sales_yyyy, $sales_mm, $sales_dd) = ($sales_date =~ /(\d+)-(\d+)-(\d+)/);
+	
+	$introduce = $xp->findvalue("/Content/IntroduceScript/text()")->value;
+	$introduce = encode_entities($introduce, '<>&"');
 	
 	$issued = $xp->findvalue("/Content/SalesDate/text()")->value;
 	
@@ -114,7 +131,12 @@ EOD
 		$title = encode_entities($title, '<>&"');
 		my $startPage = $xp->findvalue("StartPage/text()", $index)->value;
 		print $fp <<"EOD";
-      <li><a href="$startPage.svg">$title</a></li>
+		if (-f "$outdir/.jpg")
+      		<li><a href="$startPage.jpg">$title</a></li>
+      	elsif (-f "$outdir/.png")
+      		<li><a href="$startPage.png">$title</a></li>
+      	else
+      		<li><a href="$startPage.svg">$title</a></li>
 EOD
 	}
 		print $fp <<"EOD";
@@ -126,13 +148,20 @@ EOD
 	close($fp);
 }
 
+my @files;
 # Check SVG viewBox.
 my ($width, $height);
 {
-	my $xp = XML::XPath->new(filename => "$outdir/1.svg");
-	my $viewBox = $xp->findvalue('/svg/@viewBox')->value;
-	my ($x, $y);
-	($x, $y, $width, $height) = split(/ /, $viewBox);
+	my $dir;
+	opendir($dir, $outdir);
+	@files = sort grep {/^.+\.svg$/ or /^.+\.jpg$/ or /^.+\.png$/} readdir($dir);
+	closedir($dir);
+	
+	my $file = "$outdir/size";
+	my $fp;
+	open($fp, "< $file");
+	($width, $height) = split(/ /, <$fp>);
+	close($fp);
 }
 
 # mimetype
@@ -178,23 +207,25 @@ EOD
   <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
     <dc:language>ja</dc:language>
     <dc:identifier id="BookID">urn:uuid:$uuid</dc:identifier>
-    <dc:title id="title">$name</dc:title>
-    <dc:publisher>$publisher</dc:publisher>
-    <dc:description></dc:description>
+    <dc:title id="title">$name $cover_date</dc:title>
+    <dc:publisher id="publisher">$publisher</dc:publisher>
+    <dc:description>$introduce</dc:description>
     <meta property="dcterms:modified">$modified</meta>
     <meta property="dcterms:issued">$issued</meta>
-    <meta property="prism:publicationName">$name</meta>
-    <meta refines="#title" property="file-as">にゅーずうぃーくにほんばん</meta>
-    <meta property="prism:volume">26</meta>
-    <meta property="prism:number">34</meta>
-    <meta property="layout:orientation">auto</meta>
+    <meta id="publication" property="prism:publicationName">$name</meta>
+    <meta refines="#title" property="file-as">$kana $sales_date</meta>
+    <meta refines="#publisher" property="file-as">$publisher_kana</meta>
+    <meta refines="#publication" property="file-as">$kana</meta>
+    <meta property="prism:volume">$sales_yyyy</meta>
+    <meta property="prism:number">${sales_mm}${sales_dd}</meta>
     <meta property="layout:fixed-layout">true</meta>
-    <meta property="layout:overflow-scroll">true</meta>
     <meta property="layout:viewport">width=$width, height=$height</meta>
     <meta property="prs:datatype">magazine</meta>
   </metadata>
   <manifest>
 EOD
+# <meta property="layout:orientation">auto</meta>
+# <meta property="layout:overflow-scroll">true</meta>
 
 # マニフェスト
 	# nav
@@ -215,12 +246,15 @@ EOD
 	# 通常ファイル以外は除外
 		-f $_ or return;
 		my $basename = substr($File::Find::name, length($outdir) + 1);
+		$basename =~ /^size$/ and return;
 		$basename =~ /^mimetype$/ and return;
 		$basename =~ /^*.\.opf$/ and return;
 		$basename =~ /^nav\.xhtml$/ and return;
 		$basename =~ /^.+\.epub$/ and return;
 		$basename =~ /^META-INF\/.*$/ and return;
 		$basename =~ /^.*\.svg$/ and return;
+		$basename =~ /^.*\.jpg$/ and !($basename =~ /^images\/.*$/) and return;
+		$basename =~ /^.*\.png$/ and !($basename =~ /^images\/.*$/) and return;
 		
 		++$i;
 		print $fp "    <item id=\"r$i\" href=\"$basename\" media-type=\"";
@@ -255,24 +289,40 @@ EOD
     
     sub insert {
     	my $j = 1;
-    	while(-f "$outdir/$i-$j/main.html") {
+    	while(-f sprintf("$outdir/%05d-%05d/main.html", $i, $j)) {
     		my $id = "t$i-$j";
-    		my $file = "$i-$j/main.html";
+    		my $file = sprintf("%05d-%05d/main.html", $i, $j);
     		print $fp "    <item id=\"$id\" href=\"$file\" media-type=\"application/xhtml+xml\"/>\n";
     		push @items, [$id, $file];
     		++$j;
     	}
     }
-	$i = 0;
-    insert();
-	$i = 1;
-    while(-f "$outdir/$i.svg") {
-    	my $id = "t$i";
-    	my $file = "$i.svg";
-    	print $fp "    <item id=\"$id\" href=\"$file\" media-type=\"image/svg+xml\"/>\n";
-    	push @items, [$id, $file];
-    	insert();
-    	++$i;
+	$i = -1;
+	my $max = $files[-1];
+	$max =~ s/\..+$//;
+    while($i < $max) {
+     	++$i;
+    	if (-f sprintf("$outdir/%05d.svg", $i)) {
+	    	my $id = "t$i";
+	    	my $file = sprintf("%05d.svg", $i);
+	    	print $fp "    <item id=\"$id\" href=\"$file\" media-type=\"image/svg+xml\"/>\n";
+	    	push @items, [$id, $file];
+	    	insert();
+    	}
+    	elsif (-f sprintf("$outdir/%05d.png", $i)) {
+	    	my $id = "t$i";
+	    	my $file = sprintf("%05d.png", $i);
+	    	print $fp "    <item id=\"$id\" href=\"$file\" media-type=\"image/png\"/>\n";
+	    	push @items, [$id, $file];
+	    	insert();
+    	}
+    	elsif (-f sprintf("$outdir/%05d.jpg", $i)) {
+	    	my $id = "t$i";
+	    	my $file = sprintf("%05d.jpg", $i);
+	    	print $fp "    <item id=\"$id\" href=\"$file\" media-type=\"image/jpeg\"/>\n";
+	    	push @items, [$id, $file];
+	    	insert();
+    	}
     }
     
     print $fp <<"EOD";

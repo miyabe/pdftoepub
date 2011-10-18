@@ -60,13 +60,28 @@ make
 ・pdftosvg PDF 出力先ディレクトリ [SVGフォント出力(true|false)]
 PDFをSVGファイルに変換します。SVGファイルは１ページ目から順に 1.svg, 2.svg, 3.svg ... という名前で生成されます。通常はフォントは各SVGファイルの中に含まれますが、３番目の引数にtrueを設定すると、出力先ディレクトリにfontsディレクトリを作成し、その中に複数のSVGフォントが font-0.svg, font-1.svg, font-2.svg ... という名前で生成され、各ページのSVGから参照されます。
 
-・tootf.pe SVGファイル
-SVGファイルをOTFファイルに変換するFontForgeスクリプトです。実行するためにはFontForgeが必要です。
+例:
+以下のコマンドはtest.pdfをSVGに変換し、結果をTESTディレクトリに出力します
 
-・pdftepub.pl PDF XMLメタデータ 挿し込むデータディレクトリ
+./pdftosvg test.pdf TEST
+
+■ パッケージツール
+あらかじめ、次のディレクトリ構成を準備しておいてください
+[ID]は書誌IDです。
+[ID]/[ID].pdf -変換対象のPDF
+[ID]/[ID].xml -書誌データXML
+[ID]/m_[ID].xml -サンプル属性XML
+[ID]/ins -挿し込みデータ
+
+・pdftepub.pl [ID]ディレクトリのパス
 PDFからEPUBを生成するPerlスクリプトです。pdftosvgによるSVGへの変換、tootf.peによるSVGフォントからOTFへの変換を行い、EPUBファイルを生成します。生成されるEPUBファイルは、PDFの拡張子を.epubに置き換えたものになります。
 
-EPUBに挿し込むデータは挿し込みデータディレクトリにEPUB内と同じディレクトリ構成で配置します。EPUBに挿し込むページは ページ番号-通し番号/main.html という名前で配置しておきます。例えば 3-1/main.html, 3-2/main.html, 3-3/main.html ... という名前で配置すると、それぞれのコンテンツが順に3ページと4ページの間に挿入されます。1ページの前に挿入する場合は 0-1/main.html のようにします。
+EPUBに挿し込むデータは挿し込みデータディレクトリ([ID]/ins)にEPUB内と同じディレクトリ構成で配置します。EPUBに挿し込むページは ページ番号-通し番号/main.html という名前で配置しておきます。例えば 3-1/main.html, 3-2/main.html, 3-3/main.html ... という名前で配置すると、それぞれのコンテンツが順に3ページと4ページの間に挿入されます。1ページの前に挿入する場合は 0-1/main.html のようにします。
+
+結果は[ID]/workデレクトリに生成されます。
+
+・generate-sample.pl ディレクトリパス
+サンプル画像、サムネイルを生成します
 
 ■ cairoの修正内容
 以下のファイルを修正しています。
