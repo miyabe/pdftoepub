@@ -26,12 +26,28 @@ my $outfile = "$workdir/$contentsID"."_eEPUB3.epub";
 #my $outfile = "out/$contentsID"."_eEPUB3.epub";
 my $opf = $contentsID."_opf.opf";
 my $otf = 0;
+my $raster = 1;
 
 mkdir $workdir;
 
 # Generate SVGs
 {
-	system "./pdftosvg $pdfdir $outdir".($otf ? ' true' : '');
+	if ($raster) {
+		if (-d $pdfdir) {
+			opendir my $dir, "$pdfdir";
+			my @files = grep {/^.+\.pdf$/} readdir $dir;
+			foreach my $file (@files) {
+				my ($num) = ($file =~ /^(\d+)\.pdf$/);
+				system "../poppler/utils/pdftoppm -jpeg -scale-to 1280 $pdfdir/$file > $outdir/$num.jpg";
+			}
+		}
+		else {
+			system "../poppler/utils/pdftoppm -jpeg -scale-to 1280 $pdfdir $outdir/";
+		}
+	}
+	else {
+		system "./pdftosvg $pdfdir $outdir".($otf ? ' true' : '');
+	}
 	
 	if ($otf) {
 		opendir my $dir, "$outdir/fonts";

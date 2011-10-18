@@ -176,6 +176,12 @@ cairo_font_face_tをキャッシュしているが、縦書き横書き（wmode�
 ファイル名の形式をname_0000.jpgにした
 -scale-to-x, -scale-to-yを指定したとき、アスペクト比をそのままで最小の解像度になるようにした
 
+・pdftoppm.cc
+ファイル名の形式を00000.jpgにした
+
+・SplashBitmap.cc
+JPEGの画質を100にした
+
 ■ ブックリスタ
 ちび見の生成
 pdftocairo -f [最初のページ] -l [最後のページ] -scale-to-x 198 -scale-to-y 285 -jpeg [PDF] [JPEGファイル]

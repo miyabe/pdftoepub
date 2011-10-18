@@ -81,7 +81,7 @@ write_image_func (void *closure,
 
   struct stat buf;
   stat(filename, &buf);
-  if (0/*buf.st_size > 1000000*/) {
+  if (1/*buf.st_size > 1000000*/) {
 	  cairo_surface_t *png = cairo_image_surface_create_from_png(filename);
 	  remove(filename);
 	  sprintf(filename, "%s-%d.jpg", data->filename, data->counter);
@@ -291,7 +291,7 @@ void write_svg(int page_num, const char *out_dir, PopplerPage *page
     sax.startElement = OnStartElement;
     xmlSAXUserParseFile(&sax, &elements, out_file);
 
-    if (elements > 500000) {
+    if (0/*elements > 500000*/) {
 		remove(out_file);
 		int i;
 		for(i = 1; ; ++i) {
