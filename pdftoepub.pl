@@ -394,7 +394,7 @@ EOD
 	$zip->addFile("$outdir/mimetype", 'mimetype');
 	my ($mimetype) = $zip->members();
 	$mimetype->desiredCompressionLevel(0);
-	$zip->addTree($outdir, '', sub { !/^mimetype$/ });
+	$zip->addTree($outdir, '', sub { !($_ =~ /.*\/mimetype$/) });
 	$zip->writeToFileNamed($outfile);
 	
 	# check
