@@ -346,21 +346,7 @@ EOD
 		    	my $id = "t$i";
 		    	my $file = sprintf("%05d.svg", $i);
 		    	print $fp "    <item id=\"$id\" href=\"$file\" media-type=\"image/svg+xml\"/>\n";
-		    	push @items, [$id, $file];
-		    	insert();
-	    	}
-	    	elsif (-f sprintf("$outdir/%05d.png", $i)) {
-		    	my $id = "t$i";
-		    	my $file = sprintf("%05d.png", $i);
-		    	print $fp "    <item id=\"$id\" href=\"$file\" media-type=\"image/png\"/>\n";
-		    	push @items, [$id, $file];
-		    	insert();
-	    	}
-	    	elsif (-f sprintf("$outdir/%05d.jpg", $i)) {
-		    	my $id = "t$i";
-		    	my $file = sprintf("%05d.jpg", $i);
-		    	print $fp "    <item id=\"$id\" href=\"$file\" media-type=\"image/jpeg\"/>\n";
-		    	push @items, [$id, $file];
+		    	push @items, [$id, $file, $i];
 		    	insert();
 	    	}
 	    }
@@ -370,11 +356,10 @@ EOD
   <spine page-progression-direction="$ppd">
 EOD
 	
-		my $props = ($ppd eq 'rtl') ? "page-spread-left" : "page-spread-right";
 		foreach my $item ( @items ) {
-			my ($id, $file) = @$item;
+			my ($id, $file, $i) = @$item;
+	    	my $props = ($i % 2 == (($ppd eq 'rtl') ? 0 : 1)) ? "page-spread-left" : "page-spread-right";
 	    	print $fp "    <itemref idref=\"$id\" properties=\"$props\"/>\n";
-	    	$props = ($props eq "page-spread-right") ? "page-spread-left" : "page-spread-right";
 	    }
 	    
 	    print $fp <<"EOD";
