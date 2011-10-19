@@ -14,7 +14,7 @@
 
 #define CAIRO_PATCH
 
-#define VIEW_HEIGHT 1880.0
+#define VIEW_HEIGHT 2068.0
 
 void cairo_surface_write_to_jpg (cairo_surface_t *sf, char *name){
 	unsigned char *pixels = cairo_image_surface_get_data(sf);

@@ -14,7 +14,7 @@ use strict;
 
 binmode STDOUT, ":utf8";
 
-our $view_height = 1880;
+our $view_height = 2068;
 
 sub transcode {
 	my $dir = $_[0];
@@ -396,7 +396,7 @@ EOD
 	$zip->addFile("$outdir/mimetype", 'mimetype');
 	my ($mimetype) = $zip->members();
 	$mimetype->desiredCompressionLevel(0);
-	$zip->addTree($outdir, '', sub { !($_ =~ /.*\/mimetype$/) });
+	$zip->addTree($outdir, '', sub { !($_ =~ /.*\/mimetype$/) and !($_ =~ /.*\/size$/) });
 	$zip->writeToFileNamed($outfile);
 	
 	# check
