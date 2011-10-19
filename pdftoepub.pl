@@ -15,6 +15,8 @@ use strict;
 binmode STDOUT, ":utf8";
 
 our $view_height = 2068;
+our $fp;
+our $outdir;
 
 sub transcode {
 	my $dir = $_[0];
@@ -29,7 +31,7 @@ sub transcode {
 	my $metafile = "$dir/$contentsID.xml";
 	my $insertdir = "$base/ins";
 	my $workdir = "$dir/work";
-	my $outdir = "$workdir/epub";
+	$outdir = "$workdir/epub";
 	my $outfile = "$workdir/$contentsID"."_eEPUB3.epub";
 	my $opf = $contentsID."_opf.opf";
 	my $otf = 0;
@@ -64,7 +66,6 @@ sub transcode {
 			my @files = grep {/^.+\.jpg$/} readdir $dir;
 			foreach my $file (@files) {
 				my ($num) = ($file =~ /^(\d+)\.jpg$/);
-				my $fp;
 				my ($w, $h) = imgsize("$outdir/$file");
 				open($fp, "> $outdir/$num.svg");
 				binmode $fp, ":utf8";
@@ -157,7 +158,6 @@ EOD
 		
 		# TOC
 		my $indexList = $xp->find("/Content/ContentInfo/IndexList/Index");
-		my $fp;
 	    open($fp, "> $outdir/nav.xhtml");
 	    binmode $fp, ":utf8";
 			print $fp <<"EOD";
@@ -211,7 +211,6 @@ EOD
 	
 	# mimetype
 	{
-		my $fp;
 		open($fp, "> $outdir/mimetype");
 		print $fp "application/epub+zip";
 		close($fp);
@@ -223,7 +222,6 @@ EOD
 		unless(-d $dir) {
 			mkdir($dir, 0755);
 		}
-		my $fp;
 	    open($fp, "> $dir/container.xml");
 	    print $fp <<"EOD";
 <?xml version="1.0" encoding="utf-8"?>
@@ -238,7 +236,6 @@ EOD
 	
 	# OPF
 	{
-		our $fp;
 	    open($fp, "> $outdir/$opf");
 	    binmode $fp, ":utf8";
 	    print $fp <<"EOD";
