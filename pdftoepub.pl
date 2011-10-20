@@ -42,86 +42,7 @@ sub transcode {
 	
 	system "rm -r $workdir";
 	mkdir $workdir;
-	
-	# Generate SVGs
-	{
-		if ($raster) {
-			mkdir $outdir;
-			if (-d $pdfdir) {
-				opendir my $dir, "$pdfdir";
-				my @files = grep {/^.+\.pdf$/} readdir $dir;
-				foreach my $file (@files) {
-					my ($num) = ($file =~ /^(\d+)\.pdf$/);
-					system "../poppler/utils/pdftoppm -jpeg -scale-to $view_height $pdfdir/$file > $outdir/$num.jpg";
-				}
-			}
-			else {
-				system "../poppler/utils/pdftoppm -jpeg -scale-to $view_height $pdfdir $outdir/";
-			}
-			if (-f "$dir/cover.pdf") {
-				system "../poppler/utils/pdftoppm -jpeg -scale-to $view_height $dir/cover.pdf > $outdir/00000.jpg";
-			}
-			
-			opendir my $dir, "$outdir";
-			my @files = grep {/^.+\.jpg$/} readdir $dir;
-			foreach my $file (@files) {
-				my ($num) = ($file =~ /^(\d+)\.jpg$/);
-				my ($w, $h) = imgsize("$outdir/$file");
-				open($fp, "> $outdir/$num.svg");
-				binmode $fp, ":utf8";
-				print $fp <<"EOD";
-<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
-  width="100%" height="100%" viewBox="0 0 $w $h">
-  <image width="$w" height="$h" xlink:href="$file" />
-</svg>
-EOD
-				close($fp);
-			}
-		}
-		else {
-			system "./pdftosvg $pdfdir $outdir".($otf ? ' true' : '');
-		}
-		
-		if ($otf) {
-			opendir my $dir, "$outdir/fonts";
-			my @files = grep {/^.+\.svg$/} readdir $dir;
-			foreach my $file (@files) {
-				if ($file =~ /^.+\.svg$/) {
-					system "./tootf.pe $outdir/fonts/$file";
-				}
-			}
-			closedir $dir;
-			
-			system "rm $outdir/fonts/*.svg";
-			
-			opendir my $dir, $outdir;
-			my @files = grep {/^.+\.svg$/} readdir $dir;
-			foreach my $file (@files) {
-				open my $in, "< $outdir/$file";
-				open my $out, "> $outdir/$file.tmp";
-				foreach my $line (<$in>) {
-					$line =~ s/src: url\(\"fonts\/font\-(\d+)\.svg\"\) format\(\"svg\"\);/src: url\(\"fonts\/font\-$1\.otf\"\) format\(\"opentype\"\);/s;
-					print $out $line;
-				}
-				close $in;
-				close $out;
-				unlink "$outdir/$file";
-				rename "$outdir/$file.tmp", "$outdir/$file";
-			}
-			closedir $dir;
-		}
-		
-		if ($insertdir) {
-			system "cp -r $insertdir/* $outdir";
-		}
-	}
-	
-	# Generate BookID.
-	my $uuid;
-	{
-		my $ug = new Data::UUID;
-		$uuid = $ug->to_string($ug->create());
-	}
+	mkdir $outdir;
 	
 	# Read meta data.
 	my ($publisher, $publisher_kana, $name, $kana, $cover_date, $sales_date, $sales_yyyy, $sales_mm, $sales_dd, $introduce, $issued, $ppd, $modified);
@@ -190,6 +111,106 @@ EOD
 </html>
 EOD
 		close($fp);
+	}
+	
+	# Generate SVGs
+	{
+		if ($raster) {
+			if (-d $pdfdir) {
+				opendir my $dir, "$pdfdir";
+				my @files = grep {/^.+\.pdf$/} readdir $dir;
+				foreach my $file (@files) {
+					my ($num) = ($file =~ /^(\d+)\.pdf$/);
+					system "../poppler/utils/pdftoppm -jpeg -scale-to $view_height $pdfdir/$file > $outdir/$num.jpg";
+				}
+			}
+			else {
+				system "../poppler/utils/pdftoppm -jpeg -scale-to $view_height $pdfdir $outdir/";
+			}
+			if (-f "$dir/cover.pdf") {
+				system "../poppler/utils/pdftoppm -jpeg -scale-to $view_height $dir/cover.pdf > $outdir/00000.jpg";
+			}
+			
+			opendir my $dir, "$outdir";
+			my @files = sort grep {/^.+\.jpg$/} readdir $dir;
+			my ($w, $h) = imgsize("$outdir/".$files[0]);
+			foreach my $file (@files) {
+				my ($num) = ($file =~ /^(\d+)\.jpg$/);
+				my ($ww, $hh) = imgsize("$outdir/$file");
+				
+				if ($hh > $h) {
+					$ww *= $h / $hh;
+					$ww = ceil($ww);
+					$hh = $h;
+				}
+				if ($ww > $w) {
+					$hh *= $w / $ww;
+					$hh = ceil($hh);
+					$ww = $w;
+				}
+				
+				my $x;
+				if ($num % 2 == (($ppd eq 'rtl') ? 0 : 1)) {
+					$x = $w - $ww;
+				}
+				else {
+					$x = 0;
+				}
+			
+				open($fp, "> $outdir/$num.svg");
+				binmode $fp, ":utf8";
+				print $fp <<"EOD";
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+  width="100%" height="100%" viewBox="0 0 $w $h">
+  <image x="$x" width="$ww" height="$hh" xlink:href="$file" />
+</svg>
+EOD
+				close($fp);
+			}
+		}
+		else {
+			system "./pdftosvg $pdfdir $outdir".($otf ? ' true' : '');
+		}
+		
+		if ($otf) {
+			opendir my $dir, "$outdir/fonts";
+			my @files = grep {/^.+\.svg$/} readdir $dir;
+			foreach my $file (@files) {
+				if ($file =~ /^.+\.svg$/) {
+					system "./tootf.pe $outdir/fonts/$file";
+				}
+			}
+			closedir $dir;
+			
+			system "rm $outdir/fonts/*.svg";
+			
+			opendir my $dir, $outdir;
+			my @files = grep {/^.+\.svg$/} readdir $dir;
+			foreach my $file (@files) {
+				open my $in, "< $outdir/$file";
+				open my $out, "> $outdir/$file.tmp";
+				foreach my $line (<$in>) {
+					$line =~ s/src: url\(\"fonts\/font\-(\d+)\.svg\"\) format\(\"svg\"\);/src: url\(\"fonts\/font\-$1\.otf\"\) format\(\"opentype\"\);/s;
+					print $out $line;
+				}
+				close $in;
+				close $out;
+				unlink "$outdir/$file";
+				rename "$outdir/$file.tmp", "$outdir/$file";
+			}
+			closedir $dir;
+		}
+		
+		if ($insertdir) {
+			system "cp -r $insertdir/* $outdir";
+		}
+	}
+	
+	# Generate BookID.
+	my $uuid;
+	{
+		my $ug = new Data::UUID;
+		$uuid = $ug->to_string($ug->create());
 	}
 	
 	my @files;
