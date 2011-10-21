@@ -5,6 +5,7 @@ use File::Basename;
 use Archive::Zip;
 use XML::XPath;
 use Date::Format;
+use Image::Magick;
 
 use utf8;
 use strict;
@@ -79,8 +80,21 @@ sub generate {
 		outputSample();
 	}
 	
-	system "../poppler/utils/pdftoppm -l 1 -scale-to 480 -jpeg $dir/cover.pdf $workdir/cover";
-	move "$workdir/cover00001.jpg", "$destdir/$contentsID.jpg";
+	if (-f "$dir/cover.pdf") {
+		system "../poppler/utils/pdftoppm -l 1 -scale-to 480 -jpeg $dir/cover.pdf $workdir/cover";
+		move "$workdir/cover00001.jpg", "$destdir/$contentsID.jpg";
+	}
+	else {
+		my $dh;
+		opendir($dh, "$dir/appendix");
+		my @files = sort grep {/^.*\.jpg$/} readdir($dh);
+		closedir($dh);
+		
+		my $image = Image::Magick->new;
+		$image->Read("$dir/appendix/".$files[0]);
+		$image->Scale(geometry => "480x480");
+		$image->Write("$destdir/$contentsID.jpg");
+	}
 	
 	# zip
 	if (-e $outfile) {
