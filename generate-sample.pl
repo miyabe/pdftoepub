@@ -85,13 +85,21 @@ sub generate {
 		move "$workdir/cover00001.jpg", "$destdir/$contentsID.jpg";
 	}
 	else {
-		my $dh;
-		opendir($dh, "$dir/appendix");
-		my @files = sort grep {/^.*\.jpg$/} readdir($dh);
-		closedir($dh);
+		my $file;
+		
+		if (-f "$dir/cover.jpg") {
+			$file = "$dir/cover.jpg";
+		}
+		else {
+			my $dh;
+			opendir($dh, "$dir/appendix");
+			my @files = sort grep {/^.*\.jpg$/} readdir($dh);
+			closedir($dh);
+			$file = "$dir/appendix/".$files[0];
+		}
 		
 		my $image = Image::Magick->new;
-		$image->Read("$dir/appendix/".$files[0]);
+		$image->Read($file);
 		$image->Scale(geometry => "480x480");
 		$image->Write("$destdir/$contentsID.jpg");
 	}
