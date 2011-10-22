@@ -8,6 +8,7 @@ use XML::XPath;
 use Date::Format;
 use HTML::Entities;
 use Image::Size;
+use POSIX;
 
 use utf8;
 use strict;
@@ -130,7 +131,9 @@ EOD
 			if (-f "$dir/cover.pdf") {
 				system "../poppler/utils/pdftoppm -jpeg -scale-to $view_height $dir/cover.pdf > $outdir/00000.jpg";
 			}
-			
+			elsif (-f "$dir/cover.jpg") {
+				copy "$dir/cover.jpg", "$outdir/00000.jpg";
+			}
 			opendir my $dir, "$outdir";
 			my @files = sort grep {/^.+\.jpg$/} readdir $dir;
 			my ($w, $h) = imgsize("$outdir/".$files[0]);
@@ -151,7 +154,7 @@ EOD
 				
 				my $x;
 				if ($num % 2 == (($ppd eq 'rtl') ? 0 : 1)) {
-					$x = $w - $ww;
+					$x = $w - $ww + 1;
 				}
 				else {
 					$x = 0;
@@ -281,6 +284,7 @@ EOD
     <meta refines="#publication" property="file-as">$kana</meta>
     <meta property="prism:volume">$sales_yyyy</meta>
     <meta property="prism:number">${sales_mm}${sales_dd}</meta>
+    <meta property="layout:orientation">landscape</meta>
     <meta property="layout:fixed-layout">true</meta>
     <meta property="layout:viewport">width=$width, height=$height</meta>
     <meta property="prs:datatype">magazine</meta>
