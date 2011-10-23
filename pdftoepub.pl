@@ -178,7 +178,7 @@ EOD
 			else {
 				my $dh;
 				opendir($dh, "$dir/appendix");
-				my @files = sort grep {/^.*\.jpg$/} readdir($dh);
+				my @files = sort grep {/^[^\.].*\.jpg$/} readdir($dh);
 				closedir($dh);
 				my $file = "$dir/appendix/".$files[0];
 				copy $file, "$outdir/00000.jpg";
@@ -201,7 +201,7 @@ EOD
 				else {
 					my $dh;
 					opendir($dh, "$dir/appendix");
-					my @files = sort grep {/^.*\.jpg$/} readdir($dh);
+					my @files = sort grep {/^[^\.].*\.jpg$/} readdir($dh);
 					closedir($dh);
 					my $file = "$dir/appendix/".$files[0];
 					copy $file, "$outdir/00000.jpg";
