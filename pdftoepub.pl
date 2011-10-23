@@ -8,7 +8,6 @@ use XML::XPath;
 use Date::Format;
 use HTML::Entities;
 use Image::Size;
-use POSIX;
 
 use utf8;
 use strict;
@@ -114,12 +113,49 @@ EOD
 		close($fp);
 	}
 	
+	sub wrapimage {
+		my ($infile, $outfile, $w, $h, $left) = @_;
+		my ($ww, $hh) = imgsize($infile);
+		
+		if ($hh != $h) {
+			$ww *= $h / $hh;
+			$ww = int($ww);
+			$hh = $h;
+		}
+		if ($ww > $w) {
+			$hh *= $w / $ww;
+			$hh = int($hh);
+			$ww = $w;
+		}
+		
+		my $x;
+		if ($left) {
+			$x = $w - $ww + 1;
+		}
+		else {
+			$x = -1;
+		}
+		
+		my $file = basename($infile);
+		open($fp, "> $outfile");
+		binmode $fp, ":utf8";
+		print $fp <<"EOD";
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+  width="100%" height="100%" viewBox="0 0 $w $h">
+  <image x="$x" width="$ww" height="$hh" xlink:href="$file" />
+</svg>
+EOD
+		close($fp);
+	}
+	
 	# Generate SVGs
 	{
 		if ($raster) {
+			my ($w, $h);
 			if (-d $pdfdir) {
-				opendir my $dir, "$pdfdir";
-				my @files = grep {/^.+\.pdf$/} readdir $dir;
+				opendir my $dh, "$pdfdir";
+				my @files = grep {/^.+\.pdf$/} readdir $dh;
+				closedir($dh);
 				foreach my $file (@files) {
 					my ($num) = ($file =~ /^(\d+)\.pdf$/);
 					system "../poppler/utils/pdftoppm -jpeg -scale-to $view_height $pdfdir/$file > $outdir/$num.jpg";
@@ -128,51 +164,58 @@ EOD
 			else {
 				system "../poppler/utils/pdftoppm -jpeg -scale-to $view_height $pdfdir $outdir/";
 			}
+			opendir my $dh, "$outdir";
+			my @files = sort grep {/^.+\.jpg$/} readdir $dh;
+			closedir($dh);
+			($w, $h) = imgsize("$outdir/".$files[0]);
 			if (-f "$dir/cover.pdf") {
 				system "../poppler/utils/pdftoppm -jpeg -scale-to $view_height $dir/cover.pdf > $outdir/00000.jpg";
+				($w, $h) = imgsize("$outdir/00000.jpg");
 			}
 			elsif (-f "$dir/cover.jpg") {
 				copy "$dir/cover.jpg", "$outdir/00000.jpg";
 			}
-			opendir my $dir, "$outdir";
-			my @files = sort grep {/^.+\.jpg$/} readdir $dir;
-			my ($w, $h) = imgsize("$outdir/".$files[0]);
+			else {
+				my $dh;
+				opendir($dh, "$dir/appendix");
+				my @files = sort grep {/^.*\.jpg$/} readdir($dh);
+				closedir($dh);
+				my $file = "$dir/appendix/".$files[0];
+				copy $file, "$outdir/00000.jpg";
+			}
+			opendir my $dh, "$outdir";
+			@files = sort grep {/^.+\.jpg$/} readdir $dh;
+			closedir($dh);
 			foreach my $file (@files) {
-				my ($num) = ($file =~ /^(\d+)\.jpg$/);
-				my ($ww, $hh) = imgsize("$outdir/$file");
-				
-				if ($hh > $h) {
-					$ww *= $h / $hh;
-					$ww = ceil($ww);
-					$hh = $h;
-				}
-				if ($ww > $w) {
-					$hh *= $w / $ww;
-					$hh = ceil($hh);
-					$ww = $w;
-				}
-				
-				my $x;
-				if ($num % 2 == (($ppd eq 'rtl') ? 0 : 1)) {
-					$x = $w - $ww + 1;
-				}
-				else {
-					$x = 0;
-				}
-			
-				open($fp, "> $outdir/$num.svg");
-				binmode $fp, ":utf8";
-				print $fp <<"EOD";
-<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
-  width="100%" height="100%" viewBox="0 0 $w $h">
-  <image x="$x" width="$ww" height="$hh" xlink:href="$file" />
-</svg>
-EOD
-				close($fp);
+				my ($i) = ($file =~ /^(\d+)\.jpg$/);
+				wrapimage("$outdir/$file", "$outdir/$i.svg",
+					$w, $h, ($i % 2 == (($ppd eq 'rtl') ? 0 : 1)));
 			}
 		}
 		else {
 			system "./pdftosvg $pdfdir $outdir".($otf ? ' true' : '');
+			if (!(-f "$dir/cover.pdf")) {
+				if (-f "$dir/cover.jpg") {
+					copy "$dir/cover.jpg", "$outdir/00000.jpg";
+				}
+				else {
+					my $dh;
+					opendir($dh, "$dir/appendix");
+					my @files = sort grep {/^.*\.jpg$/} readdir($dh);
+					closedir($dh);
+					my $file = "$dir/appendix/".$files[0];
+					copy $file, "$outdir/00000.jpg";
+				}
+				my $dir;
+				opendir($dir, $outdir);
+				my @files = sort grep {/^.+\.svg$/} readdir($dir);
+				closedir($dir);
+				my $xp = XML::XPath->new(filename => "$outdir/".$files[0]);
+				my $viewBox = $xp->findvalue('/svg/@viewBox')->value;
+				my ($width, $height) = ($viewBox =~ /^0 0 (\d+) (\d+)$/);
+				wrapimage("$outdir/00000.jpg", "$outdir/00000.svg",
+						$width, $height, ($ppd eq 'rtl'));
+			}
 		}
 		
 		if ($otf) {
@@ -229,8 +272,7 @@ EOD
 	{
 		my $xp = XML::XPath->new(filename => "$outdir/".$files[0]);
 		my $viewBox = $xp->findvalue('/svg/@viewBox')->value;
-		my ($x, $y);
-		($x, $y, $width, $height) = split(/ /, $viewBox);
+		($width, $height) = ($viewBox =~ /^0 0 (\d+) (\d+)$/);
 	}
 	
 	# mimetype
@@ -416,16 +458,19 @@ my $jpg = 0;
 (@ARGV >= 3) and $jpg = $ARGV[2];
 
 sub process {
-	if (!$jpg) {
+	if ($jpg eq 'raster') {
+		transcode $_[0], $dest, 1;
+	}
+	elsif ($jpg eq 'svg') {
+		transcode $_[0], $dest, 0;
+	}
+	else {
 		my $destdir = "$dest/raster";
 		mkdir $destdir;
 		transcode $_[0], $destdir, 1;
 		$destdir = "$dest/svg";
 		mkdir $destdir;
 		transcode $_[0], $destdir, 0;
-	}
-	else {
-		transcode $_[0], $dest, 1;
 	}
 }
 if ($src =~ /^.+\/$/) {

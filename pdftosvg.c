@@ -266,7 +266,7 @@ void write_svg(int page_num, const char *out_dir, PopplerPage *page
     	case POPPLER_ACTION_GOTO_DEST: {
     		PopplerActionGotoDest *dest = (PopplerActionGotoDest*)lmapping->action;
     		char uri[256];
-    		sprintf(uri, "%d.svg", dest->dest->page_num);
+    		sprintf(uri, "%05d.svg", dest->dest->page_num);
     		cairo_svg_surface_link(surface,
     				uri, x, y, w, h);
     	}
@@ -414,6 +414,10 @@ int main(int argc, char *argv[])
 			if (strcmp(ent->d_name, ".") == 0) {
 				page_num = 0;
 				sprintf(filename, "%s/../cover.pdf", pdf_file);
+				fp = fopen(filename, "r");
+				if (fp == NULL)
+					continue;
+				fclose(fp);
 			}
 			else {
 				sscanf(ent->d_name, "%d.pdf", &page_num);
