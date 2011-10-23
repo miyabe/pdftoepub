@@ -420,7 +420,8 @@ int main(int argc, char *argv[])
 				fclose(fp);
 			}
 			else {
-				sscanf(ent->d_name, "%d.pdf", &page_num);
+				if (sscanf(ent->d_name, "%05d.pdf", &page_num) == 0)
+					continue;
 				sprintf(filename, "%s/%s", pdf_file, ent->d_name);
 			}
 

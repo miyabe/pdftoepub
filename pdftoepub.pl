@@ -154,22 +154,22 @@ EOD
 			my ($w, $h);
 			if (-d $pdfdir) {
 				opendir my $dh, "$pdfdir";
-				my @files = grep {/^.+\.pdf$/} readdir $dh;
+				my @files = grep {/^\d{5}\.pdf$/} readdir $dh;
 				closedir($dh);
 				foreach my $file (@files) {
-					my ($num) = ($file =~ /^(\d+)\.pdf$/);
-					system "../poppler/utils/pdftoppm -jpeg -scale-to $view_height $pdfdir/$file > $outdir/$num.jpg";
+					my ($num) = ($file =~ /^(\d{5})\.pdf$/);
+					system "../poppler/utils/pdftoppm -cropbox -jpeg -scale-to $view_height $pdfdir/$file > $outdir/$num.jpg";
 				}
 			}
 			else {
-				system "../poppler/utils/pdftoppm -jpeg -scale-to $view_height $pdfdir $outdir/";
+				system "../poppler/utils/pdftoppm -cropbox -jpeg -scale-to $view_height $pdfdir $outdir/";
 			}
 			opendir my $dh, "$outdir";
-			my @files = sort grep {/^.+\.jpg$/} readdir $dh;
+			my @files = sort grep {/^\d{5}\.jpg$/} readdir $dh;
 			closedir($dh);
 			($w, $h) = imgsize("$outdir/".$files[0]);
 			if (-f "$dir/cover.pdf") {
-				system "../poppler/utils/pdftoppm -jpeg -scale-to $view_height $dir/cover.pdf > $outdir/00000.jpg";
+				system "../poppler/utils/pdftoppm -cropbox -jpeg -scale-to $view_height $dir/cover.pdf > $outdir/00000.jpg";
 				($w, $h) = imgsize("$outdir/00000.jpg");
 			}
 			elsif (-f "$dir/cover.jpg") {
@@ -184,7 +184,7 @@ EOD
 				copy $file, "$outdir/00000.jpg";
 			}
 			opendir my $dh, "$outdir";
-			@files = sort grep {/^.+\.jpg$/} readdir $dh;
+			@files = sort grep {/^\d{5}\.jpg$/} readdir $dh;
 			closedir($dh);
 			foreach my $file (@files) {
 				my ($i) = ($file =~ /^(\d+)\.jpg$/);
@@ -208,7 +208,7 @@ EOD
 				}
 				my $dir;
 				opendir($dir, $outdir);
-				my @files = sort grep {/^.+\.svg$/} readdir($dir);
+				my @files = sort grep {/^\d{5}\.svg$/} readdir($dir);
 				closedir($dir);
 				my $xp = XML::XPath->new(filename => "$outdir/".$files[0]);
 				my $viewBox = $xp->findvalue('/svg/@viewBox')->value;
@@ -263,7 +263,7 @@ EOD
 	{
 		my $dir;
 		opendir($dir, $outdir);
-		@files = sort grep {/^.+\.svg$/} readdir($dir);
+		@files = sort grep {/^\d{5}\.svg$/} readdir($dir);
 		closedir($dir);
 	}
 	
