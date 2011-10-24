@@ -32,6 +32,14 @@ sub generate {
 	copy($metafile2, "$outdir/m_$contentsID.xml");
 	copy("$workdir/epub/$opf", "$destdir/$opf");
 	
+	if (! -f $metafile1) {
+		print "$metafile1 がないため処理をスキップします\n";
+		return;
+	}
+	if (! -f $metafile2) {
+		print "[警告] $metafile2 がありません\n";
+	}
+	
 	# Read meta data.
 	our ($sampleType, $startPage, $endPage);
 	sub outputSample {
@@ -39,11 +47,11 @@ sub generate {
 			my $pdf = sprintf("$pdfdir/%05d.pdf", $startPage);
 			if (-f $pdf) {
 				if ($sampleType eq "s") {
-					system "../poppler/utils/pdftoppm -scale-to 480 -jpeg $pdf $outdir/";
+					system "../poppler/utils/pdftoppm -cropbox -scale-to 480 -jpeg $pdf $outdir/";
 					move "$outdir/00001.jpg", sprintf("$outdir/s_$contentsID"."_%04d.jpg", $startPage);
 				}
 				elsif ($sampleType eq "t") {
-					system "../poppler/utils/pdftoppm -scale-to-x 198 -scale-to-y 285 -jpeg $pdf $outdir/";
+					system "../poppler/utils/pdftoppm -cropbox -scale-to-x 198 -scale-to-y 285 -jpeg $pdf $outdir/";
 					move "$outdir/00001.jpg", sprintf("$outdir/t_$contentsID"."_%04d.jpg", $startPage);
 				}
 			}
@@ -81,7 +89,7 @@ sub generate {
 	}
 	
 	if (-f "$dir/cover.pdf") {
-		system "../poppler/utils/pdftoppm -l 1 -scale-to 480 -jpeg $dir/cover.pdf $workdir/cover";
+		system "../poppler/utils/pdftoppm -cropbox -l 1 -scale-to 480 -jpeg $dir/cover.pdf $workdir/cover";
 		move "$workdir/cover00001.jpg", "$destdir/$contentsID.jpg";
 	}
 	else {
@@ -95,13 +103,16 @@ sub generate {
 			opendir($dh, "$dir/appendix");
 			my @files = sort grep {/^.*\.jpg$/} readdir($dh);
 			closedir($dh);
-			$file = "$dir/appendix/".$files[0];
+			if (@files) {
+				$file = "$dir/appendix/".$files[0];
+			}
 		}
-		
-		my $image = Image::Magick->new;
-		$image->Read($file);
-		$image->Scale(geometry => "480x480");
-		$image->Write("$destdir/$contentsID.jpg");
+		if (-f $file) {
+			my $image = Image::Magick->new;
+			$image->Read($file);
+			$image->Scale(geometry => "480x480");
+			$image->Write("$destdir/$contentsID.jpg");
+		}
 	}
 	
 	# zip
@@ -119,7 +130,7 @@ my $dest = $ARGV[1];
 if ($src =~ /^.+\/$/) {
 	my $dir;
 	opendir($dir, $src);
-	my @files = grep { !/^\.$/ and !/^\.\.$/ } readdir $dir;
+	my @files = grep { !/^\.$/ and !/^\.\.$/ and -d "$src$_" } readdir $dir;
 	foreach my $file (@files) {
 		generate("$src$file", $dest);
 	}

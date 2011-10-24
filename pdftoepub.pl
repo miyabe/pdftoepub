@@ -40,11 +40,16 @@ sub transcode {
 	(@_ >= 2) and $outfile = $_[1]."/$contentsID"."_eEPUB3.epub";
 	(@_ >= 3) and $raster = $_[2];
 	
+	if (! -f $metafile) {
+		print "$metafile がないため処理をスキップします\n";
+		return 0;
+	}
+	
 	system "rm -r $workdir";
 	mkdir $workdir;
 	mkdir $outdir;
 	
-	# Read meta data.
+	# メタデータを読み込む
 	my ($publisher, $publisher_kana, $name, $kana, $cover_date, $sales_date, $sales_yyyy, $sales_mm, $sales_dd, $introduce, $issued, $ppd, $modified);
 	{
 		my $xp = XML::XPath->new(filename => $metafile);
@@ -456,6 +461,7 @@ EOD
 	
 	# check
 	system "java -cp lib/jing.jar:lib/saxon9he.jar:lib/flute.jar:lib/sac.jar -jar epubcheck-3.0b2.jar $outfile";
+	return 1;
 }
 
 my $src = $ARGV[0];
@@ -473,20 +479,20 @@ sub process {
 	else {
 		my $destdir = "$dest/raster";
 		mkdir $destdir;
-		transcode $_[0], $destdir, 1;
+		transcode $_[0], $destdir, 1 or return;
 		$destdir = "$dest/svg";
 		mkdir $destdir;
-		transcode $_[0], $destdir, 0;
+		transcode $_[0], $destdir, 0 or return;
 	}
 }
 if ($src =~ /^.+\/$/) {
 	my $dir;
 	opendir($dir, $src);
-	my @files = grep { !/^\.$/ and !/^\.\.$/ } readdir $dir;
+	my @files = grep { !/^\.$/ and !/^\.\.$/ and -d "$src$_"} readdir $dir;
+	closedir($dir);
 	foreach my $file (@files) {
 		process("$src$file");
 	}
-	closedir($dir);
 }
 else {
 	process($src);
