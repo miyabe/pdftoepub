@@ -22,7 +22,7 @@ sub generate {
 	my $metafile1 = "$dir/$contentsID.xml";
 	my $metafile2 = "$dir/m_$contentsID.xml";
 	my $workdir = "$dir/work";
-	my $outdir = "$workdir/sample";
+	our $outdir = "$workdir/sample";
 	my $outfile = "$destdir/st_$contentsID.zip";
 	my $opf = $contentsID."_opf.opf";
 	
