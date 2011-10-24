@@ -180,8 +180,10 @@ EOD
 				opendir($dh, "$dir/appendix");
 				my @files = sort grep {/^[^\.].*\.jpg$/} readdir($dh);
 				closedir($dh);
-				my $file = "$dir/appendix/".$files[0];
-				copy $file, "$outdir/00000.jpg";
+				if (@files) {
+					my $file = "$dir/appendix/".$files[0];
+					copy $file, "$outdir/00000.jpg";
+				}
 			}
 			opendir my $dh, "$outdir";
 			@files = sort grep {/^\d{5}\.jpg$/} readdir $dh;
@@ -203,18 +205,22 @@ EOD
 					opendir($dh, "$dir/appendix");
 					my @files = sort grep {/^[^\.].*\.jpg$/} readdir($dh);
 					closedir($dh);
-					my $file = "$dir/appendix/".$files[0];
-					copy $file, "$outdir/00000.jpg";
+					if (@files) {
+						my $file = "$dir/appendix/".$files[0];
+						copy $file, "$outdir/00000.jpg";
+					}
 				}
-				my $dir;
-				opendir($dir, $outdir);
-				my @files = sort grep {/^\d{5}\.svg$/} readdir($dir);
-				closedir($dir);
-				my $xp = XML::XPath->new(filename => "$outdir/".$files[0]);
-				my $viewBox = $xp->findvalue('/svg/@viewBox')->value;
-				my ($width, $height) = ($viewBox =~ /^0 0 (\d+) (\d+)$/);
-				wrapimage("$outdir/00000.jpg", "$outdir/00000.svg",
-						$width, $height, ($ppd eq 'rtl'));
+				if (-f "$outdir/00000.jpg") {
+					my $dir;
+					opendir($dir, $outdir);
+					my @files = sort grep {/^\d{5}\.svg$/} readdir($dir);
+					closedir($dir);
+					my $xp = XML::XPath->new(filename => "$outdir/".$files[0]);
+					my $viewBox = $xp->findvalue('/svg/@viewBox')->value;
+					my ($width, $height) = ($viewBox =~ /^0 0 (\d+) (\d+)$/);
+					wrapimage("$outdir/00000.jpg", "$outdir/00000.svg",
+							$width, $height, ($ppd eq 'rtl'));
+				}
 			}
 		}
 		
