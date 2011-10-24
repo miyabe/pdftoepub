@@ -337,7 +337,6 @@ EOD
     <meta refines="#publication" property="file-as">$kana</meta>
     <meta property="prism:volume">$sales_yyyy</meta>
     <meta property="prism:number">${sales_mm}${sales_dd}</meta>
-    <meta property="layout:orientation">landscape</meta>
     <meta property="layout:fixed-layout">true</meta>
     <meta property="layout:viewport">width=$width, height=$height</meta>
     <meta property="prs:datatype">magazine</meta>
