@@ -50,7 +50,7 @@ sub transcode {
 	mkdir $outdir;
 	
 	# メタデータを読み込む
-	my ($publisher, $publisher_kana, $name, $kana, $cover_date, $sales_date, $sales_yyyy, $sales_mm, $sales_dd, $introduce, $issued, $ppd, $modified);
+	my ($publisher, $publisher_kana, $name, $kana, $cover_date, $sales_date, $sales_yyyy, $sales_mm, $sales_dd, $introduce, $issued, $ppd, $orientation, $modified);
 	{
 		my $xp = XML::XPath->new(filename => $metafile);
 		
@@ -79,6 +79,17 @@ sub transcode {
 		
 		$ppd = $xp->findvalue("/Content/ContentInfo/PageOpenWay/text()")->value;
 		$ppd = ($ppd == 1) ? 'ltr' : 'rtl';
+		
+		$orientation = $xp->findvalue("/Content/ContentInfo/Orientation/text()")->value;
+		if ($orientation == 1) {
+			$orientation = 'portrait';
+		}
+		elsif ($orientation == 2) {
+			$orientation = 'landscape';
+		}
+		else {
+			$orientation = 'auto';
+		}
 		
 		$modified = time2str("%Y-%m-%dT%H:%M:%SZ", time, "GMT");
 		
@@ -180,16 +191,6 @@ EOD
 			elsif (-f "$dir/cover.jpg") {
 				copy "$dir/cover.jpg", "$outdir/00000.jpg";
 			}
-			else {
-				my $dh;
-				opendir($dh, "$dir/appendix");
-				my @files = sort grep {/^[^\.].*\.jpg$/} readdir($dh);
-				closedir($dh);
-				if (@files) {
-					my $file = "$dir/appendix/".$files[0];
-					copy $file, "$outdir/00000.jpg";
-				}
-			}
 			opendir my $dh, "$outdir";
 			@files = sort grep {/^\d{5}\.jpg$/} readdir $dh;
 			closedir($dh);
@@ -204,16 +205,6 @@ EOD
 			if (!(-f "$dir/cover.pdf")) {
 				if (-f "$dir/cover.jpg") {
 					copy "$dir/cover.jpg", "$outdir/00000.jpg";
-				}
-				else {
-					my $dh;
-					opendir($dh, "$dir/appendix");
-					my @files = sort grep {/^[^\.].*\.jpg$/} readdir($dh);
-					closedir($dh);
-					if (@files) {
-						my $file = "$dir/appendix/".$files[0];
-						copy $file, "$outdir/00000.jpg";
-					}
 				}
 				if (-f "$outdir/00000.jpg") {
 					my $dir;
@@ -338,12 +329,12 @@ EOD
     <meta property="prism:volume">$sales_yyyy</meta>
     <meta property="prism:number">${sales_mm}${sales_dd}</meta>
     <meta property="layout:fixed-layout">true</meta>
+    <meta property="layout:orientation">$orientation</meta>
     <meta property="layout:viewport">width=$width, height=$height</meta>
     <meta property="prs:datatype">magazine</meta>
   </metadata>
   <manifest>
 EOD
-	# <meta property="layout:orientation">auto</meta>
 	# <meta property="layout:overflow-scroll">true</meta>
 	
 	# マニフェスト
