@@ -79,7 +79,7 @@ sub generate {
 		$sampleType = "t";
 		my $dh;
 		opendir($dh, $pdfdir);
-		my @files = sort grep {/^.*\.pdf$/} readdir($dh);
+		my @files = sort grep {/^\d{5}\.pdf$/} readdir($dh);
 		closedir($dh);
 		$startPage = $files[0];
 		$startPage =~ s/\.pdf//;
@@ -101,7 +101,7 @@ sub generate {
 		else {
 			my $dh;
 			opendir($dh, "$dir/appendix");
-			my @files = sort grep {/^.*\.jpg$/} readdir($dh);
+			my @files = sort grep {/^[^\.].*\.jpg$/} readdir($dh);
 			closedir($dh);
 			if (@files) {
 				$file = "$dir/appendix/".$files[0];
