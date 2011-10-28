@@ -73,15 +73,35 @@ PDFをSVGファイルに変換します。SVGファイルは１ページ目か�
 [ID]/m_[ID].xml -サンプル属性XML
 [ID]/ins -挿し込みデータ
 
-・pdftepub.pl [ID]ディレクトリのパス
-PDFからEPUBを生成するPerlスクリプトです。pdftosvgによるSVGへの変換、tootf.peによるSVGフォントからOTFへの変換を行い、EPUBファイルを生成します。生成されるEPUBファイルは、PDFの拡張子を.epubに置き換えたものになります。
+・pdftepub.pl ディレクトリ名 出力先 [raster|svg]
+PDFからEPUBを生成するPerlスクリプトです。
+ディレクトリ名の最後に / を付けると、さらにディレクトリ中にある複数のディレクトリを処理します。
+raster|svgのいずれかを指定すると、全体をラスター化したもの、SVGにしたもののいずれかを出力します。指定しない場合は両方を出力します。
 
 EPUBに挿し込むデータは挿し込みデータディレクトリ([ID]/ins)にEPUB内と同じディレクトリ構成で配置します。EPUBに挿し込むページは ページ番号-通し番号/main.html という名前で配置しておきます。例えば 3-1/main.html, 3-2/main.html, 3-3/main.html ... という名前で配置すると、それぞれのコンテンツが順に3ページと4ページの間に挿入されます。1ページの前に挿入する場合は 0-1/main.html のようにします。
 
-結果は[ID]/workデレクトリに生成されます。
-
-・generate-sample.pl ディレクトリパス
+・generate-sample.pl ディレクトリ名 出力先
 サンプル画像、サムネイルを生成します
+ディレクトリ名の最後に / を付けると、さらにディレクトリ中にある複数のディレクトリを処理します。
+
+・epub-package.pl ディレクトリ名
+ディレクトリをZIPにまとめてEPUBを生成します。
+
+■ patchesに含まれるパッチ
+epub-patch.pl EPUBファイル
+ EPUBファイルのOPFのitemrefのproperties（ページの右左）が単純に互い違いになっていたものを、SVGのファイル名によるページ番号に合わせて修正します。
+
+epub-patch2.pl EPUBファイル
+ 各SVGに含まれる画像をlayout:viewportに合わせて拡大し、ページの中央（のど）に寄せます。
+
+epub-patch3.pl ディレクトリ
+ ディレクトリに含まれるepubとopfの<meta property="layout:orientation">landscape</meta>を削除します。
+
+epub-patch4.pl ディテクトリ
+ ディレクトリに含まれるepubのopfの0ページを削除します。
+
+epub-patch5.pl ディレクトリ
+ ディレクトリに含まれるepubに<meta property="layout:orientation">～がなければ、<meta property="layout:orientation">auto</meta>を挿入します。
 
 ■ cairoの修正内容
 以下のファイルを修正しています。
