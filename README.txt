@@ -192,6 +192,9 @@ cairoが対応している場合は、常にshow_text_glyphを呼び出すよう
 ・CairoFontFace.cc
 cairo_font_face_tをキャッシュしているが、縦書き横書き（wmode）が違う場合でも同じフォントとして扱われ、縦書き横書きが混在した場合に縦書き部分に横書きフォントが使われてしまうバグがあったので、GtkFontのgetWModeが返す値もキャッシュのキーに加えた。
 
+・GfxFont.cc
+縦書きフォントの中央合わせでフォントの幅を考慮してなかった箇所を修正。
+
 ・pdftocairo.cc
 ファイル名の形式をname_0000.jpgにした
 -scale-to-x, -scale-to-yを指定したとき、アスペクト比をそのままで最小の解像度になるようにした
