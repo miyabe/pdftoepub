@@ -8,6 +8,7 @@ use XML::XPath;
 use Date::Format;
 use HTML::Entities;
 use Image::Size;
+use Image::Magick;
 
 use utf8;
 use strict;
@@ -37,7 +38,10 @@ sub transcode {
 	my $otf = 0;
 	my $raster = 0;
 	
-	(@_ >= 2) and $outfile = $_[1]."/$contentsID"."_eEPUB3.epub";
+	if(@_ >= 2) {
+		mkdir $_[1]."/$contentsID";
+		$outfile = $_[1]."/$contentsID/$contentsID"."_eEPUB3.epub";
+	}
 	(@_ >= 3) and $raster = $_[2];
 	
 	if (! -f $metafile) {
@@ -50,7 +54,7 @@ sub transcode {
 	mkdir $outdir;
 	
 	# メタデータを読み込む
-	my ($publisher, $publisher_kana, $name, $kana, $cover_date, $sales_date, $sales_yyyy, $sales_mm, $sales_dd, $introduce, $issued, $ppd, $orientation, $modified);
+	my ($publisher, $publisher_kana, $name, $kana, $cover_date, $sales_date, $sales_yyyy, $sales_mm, $sales_dd, $introduce, $issued, $ppd, $orientation, $modified, $datatype);
 	{
 		my $xp = XML::XPath->new(filename => $metafile);
 		
@@ -92,6 +96,11 @@ sub transcode {
 		}
 		
 		$modified = time2str("%Y-%m-%dT%H:%M:%SZ", time, "GMT");
+		
+		$datatype = $xp->findvalue("/Content/DataType/text()")->value;
+		if (!$datatype) {
+			$datatype = 'book';
+		}
 		
 		# TOC
 		my $indexList = $xp->find("/Content/ContentInfo/IndexList/Index");
@@ -331,7 +340,7 @@ EOD
     <meta property="layout:fixed-layout">true</meta>
     <meta property="layout:orientation">$orientation</meta>
     <meta property="layout:viewport">width=$width, height=$height</meta>
-    <meta property="prs:datatype">magazine</meta>
+    <meta property="prs:datatype">$datatype</meta>
   </metadata>
   <manifest>
 EOD
@@ -454,25 +463,143 @@ EOD
 	return 1;
 }
 
+sub generate {
+	my $dir = $_[0];
+	my $destdir = $_[1];
+	my $contentsID = basename($dir);
+	$destdir = "$destdir/$contentsID";
+	
+	my $pdfdir = "$dir/magazine";
+	my $metafile1 = "$dir/$contentsID.xml";
+	my $metafile2 = "$dir/m_$contentsID.xml";
+	my $workdir = "$dir/work";
+	$outdir = "$workdir/sample";
+	my $outfile = "$destdir/st_$contentsID.zip";
+	my $opf = $contentsID."_opf.opf";
+	
+	mkdir $workdir;
+	mkdir $outdir;
+	mkdir $destdir;
+	copy($metafile2, "$outdir/m_$contentsID.xml");
+	copy("$workdir/epub/$opf", "$destdir/$opf");
+	
+	if (! -f $metafile1) {
+		print "$metafile1 がないため処理をスキップします\n";
+		return;
+	}
+	if (! -f $metafile2) {
+		print "[警告] $metafile2 がありません\n";
+	}
+	
+	# Read meta data.
+	sub outputSample {
+		my ($sampleType, $startPage, $endPage) = @_;
+		do {
+			my $pdf = sprintf("$pdfdir/%05d.pdf", $startPage);
+			if (-f $pdf) {
+				if ($sampleType eq "s") {
+					system "../poppler/utils/pdftoppm -cropbox -scale-to 480 -jpeg $pdf $outdir/";
+					move "$outdir/00001.jpg", sprintf("$outdir/s_$contentsID"."_%04d.jpg", $startPage);
+				}
+				elsif ($sampleType eq "t") {
+					system "../poppler/utils/pdftoppm -cropbox -scale-to-x 198 -scale-to-y 285 -jpeg $pdf $outdir/";
+					move "$outdir/00001.jpg", sprintf("$outdir/t_$contentsID"."_%04d.jpg", $startPage);
+				}
+			}
+			++$startPage;
+		} while ($startPage <= $endPage);
+	}
+	my ($sampleType, $startPage, $endPage);
+	if (-f $metafile2) {
+		my $xp = XML::XPath->new(filename => $metafile2);
+		$sampleType = $xp->findvalue("/ContentsSample/SampleType/text()")->value;
+		$startPage = $xp->findvalue("/ContentsSample/StartPage/text()")->value;
+		$endPage = $xp->findvalue("/ContentsSample/EndPage/text()")->value;
+		outputSample($sampleType, $startPage, $endPage);
+	}
+	else {
+		my $xp = XML::XPath->new(filename => $metafile1);
+		my $samples = $xp->find("/Content/ContentInfo/PreviewPageList/PreviewPage");
+		$sampleType = "s";
+		foreach my $node ($samples->get_nodelist) {
+			$xp = XML::XPath->new(context => $node);
+			$startPage = $xp->findvalue("StartPage/text()")->value;
+			$endPage = $xp->findvalue("EndPage/text()")->value;
+			outputSample($sampleType, $startPage, $endPage);
+		}
+		
+		$sampleType = "t";
+		my $dh;
+		opendir($dh, $pdfdir);
+		my @files = sort grep {/^\d{5}\.pdf$/} readdir($dh);
+		closedir($dh);
+		$startPage = $files[0];
+		$startPage =~ s/\.pdf//;
+		$endPage = $files[-1];
+		$endPage =~ s/\.pdf//;
+		outputSample($sampleType, $startPage, $endPage);
+	}
+	
+	if (-f "$dir/cover.pdf") {
+		system "../poppler/utils/pdftoppm -cropbox -l 1 -scale-to 480 -jpeg $dir/cover.pdf $workdir/cover";
+		move "$workdir/cover00001.jpg", "$destdir/$contentsID.jpg";
+	}
+	else {
+		my $file;
+		
+		if (-f "$dir/cover.jpg") {
+			$file = "$dir/cover.jpg";
+		}
+		else {
+			my $dh;
+			opendir($dh, "$dir/appendix");
+			my @files = sort grep {/^[^\.].*\.jpg$/} readdir($dh);
+			closedir($dh);
+			if (@files) {
+				$file = "$dir/appendix/".$files[0];
+			}
+		}
+		if (-f $file) {
+			my $image = Image::Magick->new;
+			$image->Read($file);
+			$image->Scale(geometry => "480x480");
+			$image->Write("$destdir/$contentsID.jpg");
+		}
+	}
+	
+	# zip
+	if (-e $outfile) {
+		unlink $outfile;
+	}
+	my $zip = Archive::Zip->new();
+	$zip->addTree($outdir, '');
+	$zip->writeToFileNamed($outfile)
+}
+
 my $src = $ARGV[0];
 my $dest = $ARGV[1];
 my $jpg = 0;
 (@ARGV >= 3) and $jpg = $ARGV[2];
 
 sub process {
+	my $src = $_[0];
 	if ($jpg eq 'raster') {
-		transcode $_[0], $dest, 1;
+		transcode $src, $dest, 1;
+		generate($src, $dest);
 	}
 	elsif ($jpg eq 'svg') {
-		transcode $_[0], $dest, 0;
+		transcode $src, $dest, 0;
+		generate($src, $dest);
 	}
 	else {
 		my $destdir = "$dest/raster";
 		mkdir $destdir;
-		transcode $_[0], $destdir, 1 or return;
+		transcode $src, $destdir, 1 or return;
+		generate($src, $destdir);
 		$destdir = "$dest/svg";
 		mkdir $destdir;
-		transcode $_[0], $destdir, 0 or return;
+		transcode $src, $destdir, 0 or return;
+		generate($src, $destdir);
 	}
 }
 if ($src =~ /^.+\/$/) {

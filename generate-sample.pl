@@ -22,7 +22,7 @@ sub generate {
 	my $metafile1 = "$dir/$contentsID.xml";
 	my $metafile2 = "$dir/m_$contentsID.xml";
 	my $workdir = "$dir/work";
-	our $outdir = "$workdir/sample";
+	my $outdir = "$workdir/sample";
 	my $outfile = "$destdir/st_$contentsID.zip";
 	my $opf = $contentsID."_opf.opf";
 	
@@ -41,8 +41,8 @@ sub generate {
 	}
 	
 	# Read meta data.
-	our ($sampleType, $startPage, $endPage);
 	sub outputSample {
+		my ($outdir, $sampleType, $startPage, $endPage) = @_;
 		do {
 			my $pdf = sprintf("$pdfdir/%05d.pdf", $startPage);
 			if (-f $pdf) {
@@ -58,12 +58,13 @@ sub generate {
 			++$startPage;
 		} while ($startPage <= $endPage);
 	}
+	my ($outdir, $sampleType, $startPage, $endPage);
 	if (-f $metafile2) {
 		my $xp = XML::XPath->new(filename => $metafile2);
 		$sampleType = $xp->findvalue("/ContentsSample/SampleType/text()")->value;
 		$startPage = $xp->findvalue("/ContentsSample/StartPage/text()")->value;
 		$endPage = $xp->findvalue("/ContentsSample/EndPage/text()")->value;
-		outputSample();
+		outputSample($outdir, $sampleType, $startPage, $endPage);
 	}
 	else {
 		my $xp = XML::XPath->new(filename => $metafile1);
@@ -73,7 +74,7 @@ sub generate {
 			$xp = XML::XPath->new(context => $node);
 			$startPage = $xp->findvalue("StartPage/text()")->value;
 			$endPage = $xp->findvalue("EndPage/text()")->value;
-			outputSample();
+			outputSample($outdir, $sampleType, $startPage, $endPage);
 		}
 		
 		$sampleType = "t";
@@ -85,7 +86,7 @@ sub generate {
 		$startPage =~ s/\.pdf//;
 		$endPage = $files[-1];
 		$endPage =~ s/\.pdf//;
-		outputSample();
+		outputSample($outdir, $sampleType, $startPage, $endPage);
 	}
 	
 	if (-f "$dir/cover.pdf") {
