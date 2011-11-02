@@ -99,7 +99,7 @@ sub transcode {
 		
 		$datatype = $xp->findvalue("/Content/DataType/text()")->value;
 		if (!$datatype) {
-			$datatype = 'book';
+			$datatype = 'magazine';
 		}
 		
 		# TOC
