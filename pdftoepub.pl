@@ -18,6 +18,7 @@ binmode STDOUT, ":utf8";
 our $view_height = 2068;
 our $fp;
 our $outdir;
+our $pdfdir;
 
 sub transcode {
 	my $dir = $_[0];
@@ -469,7 +470,7 @@ sub generate {
 	my $contentsID = basename($dir);
 	$destdir = "$destdir/$contentsID";
 	
-	my $pdfdir = "$dir/magazine";
+	$pdfdir = "$dir/magazine";
 	my $metafile1 = "$dir/$contentsID.xml";
 	my $metafile2 = "$dir/m_$contentsID.xml";
 	my $workdir = "$dir/work";
