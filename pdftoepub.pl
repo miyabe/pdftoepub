@@ -39,16 +39,16 @@ sub transcode {
 	my $otf = 0;
 	my $raster = 0;
 	
-	if(@_ >= 2) {
-		mkdir $_[1]."/$contentsID";
-		$outfile = $_[1]."/$contentsID/$contentsID"."_eEPUB3.epub";
-	}
-	(@_ >= 3) and $raster = $_[2];
-	
 	if (! -f $metafile) {
 		print "$metafile がないため処理をスキップします\n";
 		return 0;
 	}
+	
+	if(@_ >= 2) {
+		mkdir $_[1];
+		$outfile = $_[1]."/$contentsID"."_eEPUB3.epub";
+	}
+	(@_ >= 3) and $raster = $_[2];
 	
 	system "rm -r $workdir";
 	mkdir $workdir;
@@ -468,7 +468,6 @@ sub generate {
 	my $dir = $_[0];
 	my $destdir = $_[1];
 	my $contentsID = basename($dir);
-	$destdir = "$destdir/$contentsID";
 	
 	$pdfdir = "$dir/magazine";
 	my $metafile1 = "$dir/$contentsID.xml";
@@ -478,16 +477,16 @@ sub generate {
 	my $outfile = "$destdir/st_$contentsID.zip";
 	my $opf = $contentsID."_opf.opf";
 	
+	if (! -f $metafile1) {
+		print "$metafile1 がないため処理をスキップします\n";
+		return;
+	}
+	
 	mkdir $workdir;
 	mkdir $outdir;
 	mkdir $destdir;
 	copy($metafile2, "$outdir/m_$contentsID.xml");
 	copy("$workdir/epub/$opf", "$destdir/$opf");
-	
-	if (! -f $metafile1) {
-		print "$metafile1 がないため処理をスキップします\n";
-		return;
-	}
 	if (! -f $metafile2) {
 		print "[警告] $metafile2 がありません\n";
 	}
