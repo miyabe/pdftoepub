@@ -19,10 +19,10 @@ our $view_height = 2068;
 our $fp;
 our $outdir;
 our $pdfdir;
+our $base = dirname(__FILE__);
 
 sub transcode {
 	my $dir = $_[0];
-	my $base = dirname(__FILE__);
 	my $contentsID = basename($dir);
 	
 	my $pdfdir = "$dir/$contentsID.pdf";
@@ -184,18 +184,18 @@ EOD
 				closedir($dh);
 				foreach my $file (@files) {
 					my ($num) = ($file =~ /^(\d{5})\.pdf$/);
-					system "../poppler/utils/pdftoppm -cropbox -jpeg -scale-to $view_height $pdfdir/$file > $outdir/$num.jpg";
+					system "$base/../poppler/utils/pdftoppm -cropbox -jpeg -scale-to $view_height $pdfdir/$file > $outdir/$num.jpg";
 				}
 			}
 			else {
-				system "../poppler/utils/pdftoppm -cropbox -jpeg -scale-to $view_height $pdfdir $outdir/";
+				system "$base/../poppler/utils/pdftoppm -cropbox -jpeg -scale-to $view_height $pdfdir $outdir/";
 			}
 			opendir my $dh, "$outdir";
 			my @files = sort grep {/^\d{5}\.jpg$/} readdir $dh;
 			closedir($dh);
 			($w, $h) = imgsize("$outdir/".$files[0]);
 			if (-f "$dir/cover.pdf") {
-				system "../poppler/utils/pdftoppm -cropbox -jpeg -scale-to $view_height $dir/cover.pdf > $outdir/00000.jpg";
+				system "$base/../poppler/utils/pdftoppm -cropbox -jpeg -scale-to $view_height $dir/cover.pdf > $outdir/00000.jpg";
 				($w, $h) = imgsize("$outdir/00000.jpg");
 			}
 			elsif (-f "$dir/cover.jpg") {
@@ -211,7 +211,7 @@ EOD
 			}
 		}
 		else {
-			system "./pdftosvg $pdfdir $outdir".($otf ? ' true' : '');
+			system "$base/pdftosvg $pdfdir $outdir".($otf ? ' true' : '');
 			if (!(-f "$dir/cover.pdf")) {
 				if (-f "$dir/cover.jpg") {
 					copy "$dir/cover.jpg", "$outdir/00000.jpg";
@@ -460,7 +460,7 @@ EOD
 	$zip->writeToFileNamed($outfile);
 	
 	# check
-	system "java -cp lib/jing.jar:lib/saxon9he.jar:lib/flute.jar:lib/sac.jar -jar epubcheck-3.0b2.jar $outfile";
+	system "cd $base; java -cp lib/jing.jar:lib/saxon9he.jar:lib/flute.jar:lib/sac.jar -jar epubcheck-3.0b2.jar $outfile";
 	return 1;
 }
 
@@ -498,11 +498,11 @@ sub generate {
 			my $pdf = sprintf("$pdfdir/%05d.pdf", $startPage);
 			if (-f $pdf) {
 				if ($sampleType eq "s") {
-					system "../poppler/utils/pdftoppm -cropbox -scale-to 480 -jpeg $pdf $outdir/";
+					system "$base/../poppler/utils/pdftoppm -cropbox -scale-to 480 -jpeg $pdf $outdir/";
 					move "$outdir/00001.jpg", sprintf("$outdir/s_$contentsID"."_%04d.jpg", $startPage);
 				}
 				elsif ($sampleType eq "t") {
-					system "../poppler/utils/pdftoppm -cropbox -scale-to-x 198 -scale-to-y 285 -jpeg $pdf $outdir/";
+					system "$base/../poppler/utils/pdftoppm -cropbox -scale-to-x 198 -scale-to-y 285 -jpeg $pdf $outdir/";
 					move "$outdir/00001.jpg", sprintf("$outdir/t_$contentsID"."_%04d.jpg", $startPage);
 				}
 			}
@@ -541,7 +541,7 @@ sub generate {
 	}
 	
 	if (-f "$dir/cover.pdf") {
-		system "../poppler/utils/pdftoppm -cropbox -l 1 -scale-to 480 -jpeg $dir/cover.pdf $workdir/cover";
+		system "$base/../poppler/utils/pdftoppm -cropbox -l 1 -scale-to 480 -jpeg $dir/cover.pdf $workdir/cover";
 		move "$workdir/cover00001.jpg", "$destdir/$contentsID.jpg";
 	}
 	else {
