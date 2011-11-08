@@ -2,6 +2,7 @@
 use File::Find;
 use File::Basename;
 use File::Copy;
+use File::Path;
 use Data::UUID;
 use Archive::Zip;
 use XML::XPath;
@@ -12,13 +13,23 @@ use Image::Magick;
 
 use utf8;
 use strict;
+use warnings;
 
 binmode STDOUT, ":utf8";
 
+# 画面の高さ
 our $view_height = 2068;
+
+# ファイルポインタ格納用
 our $fp;
+
+# 出力先ディレクトリ
 our $outdir;
+
+# 変換元のPDFのディレクトリ
 our $pdfdir;
+
+# プログラムのベースディレクトリ
 our $base = dirname(__FILE__);
 
 sub transcode {
@@ -40,7 +51,7 @@ sub transcode {
 	my $raster = 0;
 	
 	if (! -f $metafile) {
-		print "$metafile がないため処理をスキップします\n";
+		print STDERR "$dir: メタ情報XMLファイル ($contentsID.xml) がないため処理できませんでした。\n";
 		return 0;
 	}
 	
@@ -50,7 +61,7 @@ sub transcode {
 	}
 	(@_ >= 3) and $raster = $_[2];
 	
-	system "rm -r $workdir";
+	rmtree $workdir;
 	mkdir $workdir;
 	mkdir $outdir;
 	
@@ -60,33 +71,53 @@ sub transcode {
 		my $xp = XML::XPath->new(filename => $metafile);
 		
 		$publisher = $xp->findvalue("/Content/PublisherInfo/Name/text()")->value;
-		$publisher = encode_entities($publisher, '<>&"');
+		if ($publisher) {
+			$publisher = encode_entities($publisher, '<>&"');
+		}
 		
 		$publisher_kana = $xp->findvalue("/Content/PublisherInfo/Kana/text()")->value;
-		$publisher_kana = encode_entities($publisher_kana, '<>&"');
+		if ($publisher_kana) {
+			$publisher_kana = encode_entities($publisher_kana, '<>&"');
+		}
 		
 		$name = $xp->findvalue("/Content/MagazineInfo/Name/text()")->value;
-		$name = encode_entities($name, '<>&"');
+		if ($name) {
+			$name = encode_entities($name, '<>&"');
+		}
 		
 		$kana = $xp->findvalue("/Content/MagazineInfo/Kana/text()")->value;
-		$kana = encode_entities($kana, '<>&"');
+		if ($kana) {
+			$kana = encode_entities($kana, '<>&"');
+		}
 		
 		$cover_date = $xp->findvalue("/Content/CoverDate/text()")->value;
-		$cover_date = encode_entities($cover_date, '<>&"');
+		if ($cover_date) {
+			$cover_date = encode_entities($cover_date, '<>&"');
+		}
 		
 		$sales_date = $xp->findvalue("/Content/SalesDate/text()")->value;
-		($sales_yyyy, $sales_mm, $sales_dd) = ($sales_date =~ /(\d+)-(\d+)-(\d+)/);
+		if ($sales_date) {
+			($sales_yyyy, $sales_mm, $sales_dd) = ($sales_date =~ /(\d+)-(\d+)-(\d+)/);
+		}
 		
 		$introduce = $xp->findvalue("/Content/IntroduceScript/text()")->value;
-		$introduce = encode_entities($introduce, '<>&"');
+		if ($introduce) {
+			$introduce = encode_entities($introduce, '<>&"');
+		}
 		
 		$issued = $xp->findvalue("/Content/SalesDate/text()")->value;
+		if ($issued) {
+			$issued = encode_entities($issued, '<>&"');
+		}
 		
 		$ppd = $xp->findvalue("/Content/ContentInfo/PageOpenWay/text()")->value;
 		$ppd = ($ppd == 1) ? 'ltr' : 'rtl';
 		
 		$orientation = $xp->findvalue("/Content/ContentInfo/Orientation/text()")->value;
-		if ($orientation == 1) {
+		if (!$orientation) {
+			$orientation = 'auto';
+		}	
+		elsif ($orientation == 1) {
 			$orientation = 'portrait';
 		}
 		elsif ($orientation == 2) {
@@ -103,7 +134,7 @@ sub transcode {
 			$datatype = 'magazine';
 		}
 		
-		# TOC
+		# 目次
 		my $indexList = $xp->find("/Content/ContentInfo/IndexList/Index");
 	    open($fp, "> $outdir/nav.xhtml");
 	    binmode $fp, ":utf8";
@@ -139,6 +170,7 @@ EOD
 		close($fp);
 	}
 	
+	# 画像をSVGでくるむ
 	sub wrapimage {
 		my ($infile, $outfile, $w, $h, $left) = @_;
 		my ($ww, $hh) = imgsize($infile);
@@ -174,34 +206,45 @@ EOD
 		close($fp);
 	}
 	
-	# Generate SVGs
+	# PDFからSVGまたは画像に変換する
 	{
 		if ($raster) {
+			my $dh;
 			my ($w, $h);
 			if (-d $pdfdir) {
-				opendir my $dh, "$pdfdir";
+				opendir $dh, "$pdfdir";
 				my @files = grep {/^\d{5}\.pdf$/} readdir $dh;
 				closedir($dh);
 				foreach my $file (@files) {
 					my ($num) = ($file =~ /^(\d{5})\.pdf$/);
 					system "$base/../poppler/utils/pdftoppm -cropbox -jpeg -scale-to $view_height $pdfdir/$file > $outdir/$num.jpg";
+					if ($?) {
+						print STDERR "$dir: $file をJPEGに変換する際にエラーが発生しました。\n";
+					}
 				}
 			}
 			else {
 				system "$base/../poppler/utils/pdftoppm -cropbox -jpeg -scale-to $view_height $pdfdir $outdir/";
+				if ($?) {
+					print STDERR "$dir: $pdfdir をJPEGに変換する際にエラーが発生しました。\n";
+				}
 			}
-			opendir my $dh, "$outdir";
+			opendir $dh, "$outdir";
 			my @files = sort grep {/^\d{5}\.jpg$/} readdir $dh;
 			closedir($dh);
 			($w, $h) = imgsize("$outdir/".$files[0]);
 			if (-f "$dir/cover.pdf") {
 				system "$base/../poppler/utils/pdftoppm -cropbox -jpeg -scale-to $view_height $dir/cover.pdf > $outdir/00000.jpg";
+				if ($?) {
+					print STDERR "$dir: cover.pdf をJPEGに変換する際にエラーが発生しました。\n";
+					last;
+				}
 				($w, $h) = imgsize("$outdir/00000.jpg");
 			}
 			elsif (-f "$dir/cover.jpg") {
 				copy "$dir/cover.jpg", "$outdir/00000.jpg";
 			}
-			opendir my $dh, "$outdir";
+			opendir $dh, "$outdir";
 			@files = sort grep {/^\d{5}\.jpg$/} readdir $dh;
 			closedir($dh);
 			foreach my $file (@files) {
@@ -242,8 +285,8 @@ EOD
 			
 			system "rm $outdir/fonts/*.svg";
 			
-			opendir my $dir, $outdir;
-			my @files = grep {/^.+\.svg$/} readdir $dir;
+			opendir $dir, $outdir;
+			@files = grep {/^.+\.svg$/} readdir $dir;
 			foreach my $file (@files) {
 				open my $in, "< $outdir/$file";
 				open my $out, "> $outdir/$file.tmp";
@@ -351,7 +394,7 @@ EOD
 		# nav
 		print $fp "    <item id=\"nav\" href=\"nav.xhtml\" properties=\"nav\" media-type=\"application/xhtml+xml\"/>\n";
 	
-		my $i = 0;
+		our $i = 0;
 	
 		#--------------------------------------------
 		#ファイルが見つかる度に呼び出される
@@ -362,7 +405,7 @@ EOD
 			my $basename = substr($File::Find::name, length($outdir) + 1);
 			$basename =~ /^size$/ and return;
 			$basename =~ /^mimetype$/ and return;
-			$basename =~ /^*.\.opf$/ and return;
+			$basename =~ /^.*\.opf$/ and return;
 			$basename =~ /^nav\.xhtml$/ and return;
 			$basename =~ /^.+\.epub$/ and return;
 			$basename =~ /^META-INF\/.*$/ and return;
@@ -403,7 +446,7 @@ EOD
 		#-- 実行 --#
 		find(\&wanted, @directories_to_search);
 	    
-	    my @items;
+	    our @items;
 	    
 	    sub insert {
 	    	my $j = 1;
@@ -461,6 +504,9 @@ EOD
 	
 	# check
 	system "java -cp \"$base/lib/jing.jar:$base/lib/saxon9he.jar:$base/lib/flute.jar:$base/lib/sac.jar\" -jar \"$base/epubcheck-3.0b2.jar\" $outfile";
+	if ($?) {
+		print STDERR "$dir: EPUBチェッカの実行時にエラーがありました。\n";
+	}
 	return 1;
 }
 
@@ -478,8 +524,8 @@ sub generate {
 	my $opf = $contentsID."_opf.opf";
 	
 	if (! -f $metafile1) {
-		print "$metafile1 がないため処理をスキップします\n";
-		return;
+		print "$dir: メタ情報XMLファイル ($contentsID.xml) がありません。\n";
+		return 0;
 	}
 	
 	mkdir $workdir;
@@ -487,23 +533,30 @@ sub generate {
 	mkdir $destdir;
 	copy($metafile2, "$outdir/m_$contentsID.xml");
 	copy("$workdir/epub/$opf", "$destdir/$opf");
-	if (! -f $metafile2) {
-		print "[警告] $metafile2 がありません\n";
-	}
 	
 	# Read meta data.
 	sub outputSample {
-		my ($sampleType, $startPage, $endPage) = @_;
+		my ($dir, $contentsID, $sampleType, $startPage, $endPage) = @_;
 		do {
 			my $pdf = sprintf("$pdfdir/%05d.pdf", $startPage);
 			if (-f $pdf) {
 				if ($sampleType eq "s") {
 					system "$base/../poppler/utils/pdftoppm -cropbox -scale-to 480 -jpeg $pdf $outdir/";
-					move "$outdir/00001.jpg", sprintf("$outdir/s_$contentsID"."_%04d.jpg", $startPage);
+					if ($?) {
+						print STDERR "$dir: $pdf をJPEGに変換する際にエラーが発生しました。\n";
+					}
+					else {
+						move "$outdir/00001.jpg", sprintf("$outdir/s_$contentsID"."_%04d.jpg", $startPage);
+					}
 				}
 				elsif ($sampleType eq "t") {
 					system "$base/../poppler/utils/pdftoppm -cropbox -scale-to-x 198 -scale-to-y 285 -jpeg $pdf $outdir/";
-					move "$outdir/00001.jpg", sprintf("$outdir/t_$contentsID"."_%04d.jpg", $startPage);
+					if ($?) {
+						print STDERR "$dir: $pdf をJPEGに変換する際にエラーが発生しました。\n";
+					}
+					else {
+						move "$outdir/00001.jpg", sprintf("$outdir/t_$contentsID"."_%04d.jpg", $startPage);
+					}
 				}
 			}
 			++$startPage;
@@ -515,7 +568,7 @@ sub generate {
 		$sampleType = $xp->findvalue("/ContentsSample/SampleType/text()")->value;
 		$startPage = $xp->findvalue("/ContentsSample/StartPage/text()")->value;
 		$endPage = $xp->findvalue("/ContentsSample/EndPage/text()")->value;
-		outputSample($sampleType, $startPage, $endPage);
+		outputSample($dir, $contentsID, $sampleType, $startPage, $endPage);
 	}
 	else {
 		my $xp = XML::XPath->new(filename => $metafile1);
@@ -525,7 +578,7 @@ sub generate {
 			$xp = XML::XPath->new(context => $node);
 			$startPage = $xp->findvalue("StartPage/text()")->value;
 			$endPage = $xp->findvalue("EndPage/text()")->value;
-			outputSample($sampleType, $startPage, $endPage);
+			outputSample($dir, $contentsID, $sampleType, $startPage, $endPage);
 		}
 		
 		$sampleType = "t";
@@ -537,12 +590,17 @@ sub generate {
 		$startPage =~ s/\.pdf//;
 		$endPage = $files[-1];
 		$endPage =~ s/\.pdf//;
-		outputSample($sampleType, $startPage, $endPage);
+		outputSample($dir, $contentsID, $sampleType, $startPage, $endPage);
 	}
 	
 	if (-f "$dir/cover.pdf") {
 		system "$base/../poppler/utils/pdftoppm -cropbox -l 1 -scale-to 480 -jpeg $dir/cover.pdf $workdir/cover";
-		move "$workdir/cover00001.jpg", "$destdir/$contentsID.jpg";
+		if ($?) {
+			print STDERR "$dir: cover.pdf をJPEGに変換する際にエラーが発生しました。\n";
+		}
+		else {
+			move "$workdir/cover00001.jpg", "$destdir/$contentsID.jpg";
+		}
 	}
 	else {
 		my $file;
@@ -583,24 +641,26 @@ my $jpg = 0;
 
 sub process {
 	my $src = $_[0];
+	#eval {
 	if ($jpg eq 'raster') {
-		transcode $src, $dest, 1;
+		transcode($src, $dest, 1) or return;
 		generate($src, $dest);
 	}
 	elsif ($jpg eq 'svg') {
-		transcode $src, $dest, 0;
+		transcode($src, $dest, 0) or return;
 		generate($src, $dest);
 	}
 	else {
 		my $destdir = "$dest/raster";
 		mkdir $destdir;
-		transcode $src, $destdir, 1 or return;
+		transcode($src, $destdir, 1) or return;
 		generate($src, $destdir);
 		$destdir = "$dest/svg";
 		mkdir $destdir;
-		transcode $src, $destdir, 0 or return;
+		transcode($src, $destdir, 0) or return;
 		generate($src, $destdir);
 	}
+	#}
 }
 if ($src =~ /^.+\/$/) {
 	my $dir;
@@ -608,9 +668,19 @@ if ($src =~ /^.+\/$/) {
 	my @files = grep { !/^\.$/ and !/^\.\.$/ and -d "$src$_"} readdir $dir;
 	closedir($dir);
 	foreach my $file (@files) {
-		process("$src$file");
+		eval{
+			process("$src$file");
+		};
+		if ($@) {
+			print STDERR "$src: 処理を中断しました。エラー: $@";
+		}
 	}
 }
 else {
-	process($src);
+	eval{
+		process($src);
+	};
+	if ($@) {
+		print STDERR "$src: 処理を中断しました。エラー: $@";
+	}
 }
