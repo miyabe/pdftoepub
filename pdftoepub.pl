@@ -460,7 +460,7 @@ EOD
 	$zip->writeToFileNamed($outfile);
 	
 	# check
-	system "cd $base; java -cp lib/jing.jar:lib/saxon9he.jar:lib/flute.jar:lib/sac.jar -jar epubcheck-3.0b2.jar $outfile";
+	system "java -cp \"$base/lib/jing.jar:$base/lib/saxon9he.jar:$base/lib/flute.jar:$base/lib/sac.jar\" -jar \"$base/epubcheck-3.0b2.jar\" $outfile";
 	return 1;
 }
 
