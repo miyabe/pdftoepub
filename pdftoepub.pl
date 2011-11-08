@@ -3,6 +3,7 @@ use File::Find;
 use File::Basename;
 use File::Copy;
 use File::Path;
+use File::Temp;
 use Data::UUID;
 use Archive::Zip;
 use XML::XPath;
@@ -503,10 +504,27 @@ EOD
 	$zip->writeToFileNamed($outfile);
 	
 	# check
-	system "java -cp \"$base/lib/jing.jar:$base/lib/saxon9he.jar:$base/lib/flute.jar:$base/lib/sac.jar\" -jar \"$base/epubcheck-3.0b2.jar\" $outfile";
+	my $tmp = tmpnam();
+	system "java -cp \"$base/lib/jing.jar:$base/lib/saxon9he.jar:$base/lib/flute.jar:$base/lib/sac.jar\" -jar \"$base/epubcheck-3.0b2.jar\" $outfile 2> $tmp";
 	if ($?) {
 		print STDERR "$dir: EPUBチェッカの実行時にエラーがありました。\n";
+		unlink $tmp;
 	}
+	
+	open $fp, "< $tmp";
+	my $err = 0;
+	while (<$fp>) {
+		print STDERR $_;
+		if (!$err && $_) {
+			$err = 1;
+		}
+	}
+	close $fp;
+	unlink $tmp;
+	if ($err) {
+		return 0;
+	}
+	
 	return 1;
 }
 
@@ -643,22 +661,22 @@ sub process {
 	my $src = $_[0];
 	#eval {
 	if ($jpg eq 'raster') {
-		transcode($src, $dest, 1) or return;
-		generate($src, $dest);
+		transcode($src, $dest, 1) or return 0;
+		generate($src, $dest) or return 0;
 	}
 	elsif ($jpg eq 'svg') {
-		transcode($src, $dest, 0) or return;
-		generate($src, $dest);
+		transcode($src, $dest, 0) or return 0;
+		generate($src, $dest) or return 0;
 	}
 	else {
 		my $destdir = "$dest/raster";
 		mkdir $destdir;
-		transcode($src, $destdir, 1) or return;
-		generate($src, $destdir);
+		transcode($src, $destdir, 1) or return 0;
+		generate($src, $destdir) or return 0;
 		$destdir = "$dest/svg";
 		mkdir $destdir;
-		transcode($src, $destdir, 0) or return;
-		generate($src, $destdir);
+		transcode($src, $destdir, 0) or return 0;
+		generate($src, $destdir) or return 0;
 	}
 	#}
 }
@@ -678,9 +696,10 @@ if ($src =~ /^.+\/$/) {
 }
 else {
 	eval{
-		process($src);
+		process($src) or exit(-1);
 	};
 	if ($@) {
 		print STDERR "$src: 処理を中断しました。エラー: $@";
+		exit(-1);
 	}
 }
