@@ -33,6 +33,12 @@ our $pdfdir;
 # プログラムのベースディレクトリ
 our $base = dirname(__FILE__);
 
+sub trim {
+	my $val = shift;
+	$val =~ s/^\s*(.*?)\s*$/$1/;
+	return $val;
+}
+
 sub transcode {
 	my $dir = $_[0];
 	my $contentsID = basename($dir);
@@ -73,27 +79,27 @@ sub transcode {
 		
 		$publisher = $xp->findvalue("/Content/PublisherInfo/Name/text()")->value;
 		if ($publisher) {
-			$publisher = encode_entities($publisher, '<>&"');
+			$publisher = trim(encode_entities($publisher, '<>&"'));
 		}
 		
 		$publisher_kana = $xp->findvalue("/Content/PublisherInfo/Kana/text()")->value;
 		if ($publisher_kana) {
-			$publisher_kana = encode_entities($publisher_kana, '<>&"');
+			$publisher_kana = trim(encode_entities($publisher_kana, '<>&"'));
 		}
 		
 		$name = $xp->findvalue("/Content/MagazineInfo/Name/text()")->value;
 		if ($name) {
-			$name = encode_entities($name, '<>&"');
+			$name = trim(encode_entities($name, '<>&"'));
 		}
 		
 		$kana = $xp->findvalue("/Content/MagazineInfo/Kana/text()")->value;
 		if ($kana) {
-			$kana = encode_entities($kana, '<>&"');
+			$kana = trim(encode_entities($kana, '<>&"'));
 		}
 		
 		$cover_date = $xp->findvalue("/Content/CoverDate/text()")->value;
 		if ($cover_date) {
-			$cover_date = encode_entities($cover_date, '<>&"');
+			$cover_date = trim(encode_entities($cover_date, '<>&"'));
 		}
 		
 		$sales_date = $xp->findvalue("/Content/SalesDate/text()")->value;
@@ -103,18 +109,18 @@ sub transcode {
 		
 		$introduce = $xp->findvalue("/Content/IntroduceScript/text()")->value;
 		if ($introduce) {
-			$introduce = encode_entities($introduce, '<>&"');
+			$introduce = trim(encode_entities($introduce, '<>&"'));
 		}
 		
 		$issued = $xp->findvalue("/Content/SalesDate/text()")->value;
 		if ($issued) {
-			$issued = encode_entities($issued, '<>&"');
+			$issued = trim(encode_entities($issued, '<>&"'));
 		}
 		
-		$ppd = $xp->findvalue("/Content/ContentInfo/PageOpenWay/text()")->value;
+		$ppd = trim($xp->findvalue("/Content/ContentInfo/PageOpenWay/text()")->value);
 		$ppd = ($ppd == 1) ? 'ltr' : 'rtl';
 		
-		$orientation = $xp->findvalue("/Content/ContentInfo/Orientation/text()")->value;
+		$orientation = trim($xp->findvalue("/Content/ContentInfo/Orientation/text()")->value);
 		if (!$orientation) {
 			$orientation = 'auto';
 		}	
@@ -130,7 +136,7 @@ sub transcode {
 		
 		$modified = time2str("%Y-%m-%dT%H:%M:%SZ", time, "GMT");
 		
-		$datatype = $xp->findvalue("/Content/DataType/text()")->value;
+		$datatype = trim($xp->findvalue("/Content/DataType/text()")->value);
 		if (!$datatype) {
 			$datatype = 'magazine';
 		}
@@ -154,9 +160,9 @@ sub transcode {
     <ol>
 EOD
 		foreach my $index ($indexList->get_nodelist) {
-			my $title = $xp->findvalue("Title/text()", $index)->value;
+			my $title = trim($xp->findvalue("Title/text()", $index)->value);
 			$title = encode_entities($title, '<>&"');
-			my $startPage = $xp->findvalue("StartPage/text()", $index)->value - 1;
+			my $startPage = trim($xp->findvalue("StartPage/text()", $index)->value) - 1;
 			my $file = sprintf("%05d.svg", $startPage);
 			print $fp <<"EOD";
 		<li><a href="$file">$title</a></li>
@@ -583,9 +589,9 @@ sub generate {
 	my ($sampleType, $startPage, $endPage);
 	if (-f $metafile2) {
 		my $xp = XML::XPath->new(filename => $metafile2);
-		$sampleType = $xp->findvalue("/ContentsSample/SampleType/text()")->value;
-		$startPage = $xp->findvalue("/ContentsSample/StartPage/text()")->value;
-		$endPage = $xp->findvalue("/ContentsSample/EndPage/text()")->value;
+		$sampleType = trim($xp->findvalue("/ContentsSample/SampleType/text()")->value);
+		$startPage = trim($xp->findvalue("/ContentsSample/StartPage/text()")->value);
+		$endPage = trim($xp->findvalue("/ContentsSample/EndPage/text()")->value);
 		outputSample($dir, $contentsID, $sampleType, $startPage, $endPage);
 	}
 	else {
@@ -594,8 +600,8 @@ sub generate {
 		$sampleType = "s";
 		foreach my $node ($samples->get_nodelist) {
 			$xp = XML::XPath->new(context => $node);
-			$startPage = $xp->findvalue("StartPage/text()")->value;
-			$endPage = $xp->findvalue("EndPage/text()")->value;
+			$startPage = trim($xp->findvalue("StartPage/text()")->value);
+			$endPage = trim($xp->findvalue("EndPage/text()")->value);
 			outputSample($dir, $contentsID, $sampleType, $startPage, $endPage);
 		}
 		
