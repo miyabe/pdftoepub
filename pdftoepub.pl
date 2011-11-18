@@ -453,7 +453,7 @@ EOD
 		#-- 実行 --#
 		find(\&wanted, @directories_to_search);
 	    
-	    our @items;
+	    our @items = ();
 	    
 	    sub insert {
 	    	my $j = 1;
@@ -587,35 +587,26 @@ sub generate {
 		} while ($startPage <= $endPage);
 	}
 	my ($sampleType, $startPage, $endPage);
-	if (-f $metafile2) {
-		my $xp = XML::XPath->new(filename => $metafile2);
-		$sampleType = trim($xp->findvalue("/ContentsSample/SampleType/text()")->value);
-		$startPage = trim($xp->findvalue("/ContentsSample/StartPage/text()")->value);
-		$endPage = trim($xp->findvalue("/ContentsSample/EndPage/text()")->value);
+	my $xp = XML::XPath->new(filename => $metafile1);
+	my $samples = $xp->find("/Content/ContentInfo/PreviewPageList/PreviewPage");
+	$sampleType = "s";
+	foreach my $node ($samples->get_nodelist) {
+		$xp = XML::XPath->new(context => $node);
+		$startPage = trim($xp->findvalue("StartPage/text()")->value);
+		$endPage = trim($xp->findvalue("EndPage/text()")->value);
 		outputSample($dir, $contentsID, $sampleType, $startPage, $endPage);
 	}
-	else {
-		my $xp = XML::XPath->new(filename => $metafile1);
-		my $samples = $xp->find("/Content/ContentInfo/PreviewPageList/PreviewPage");
-		$sampleType = "s";
-		foreach my $node ($samples->get_nodelist) {
-			$xp = XML::XPath->new(context => $node);
-			$startPage = trim($xp->findvalue("StartPage/text()")->value);
-			$endPage = trim($xp->findvalue("EndPage/text()")->value);
-			outputSample($dir, $contentsID, $sampleType, $startPage, $endPage);
-		}
-		
-		$sampleType = "t";
-		my $dh;
-		opendir($dh, $pdfdir);
-		my @files = sort grep {/^\d{5}\.pdf$/} readdir($dh);
-		closedir($dh);
-		$startPage = $files[0];
-		$startPage =~ s/\.pdf//;
-		$endPage = $files[-1];
-		$endPage =~ s/\.pdf//;
-		outputSample($dir, $contentsID, $sampleType, $startPage, $endPage);
-	}
+	
+	$sampleType = "t";
+	my $dh;
+	opendir($dh, $pdfdir);
+	my @files = sort grep {/^\d{5}\.pdf$/} readdir($dh);
+	closedir($dh);
+	$startPage = $files[0];
+	$startPage =~ s/\.pdf//;
+	$endPage = $files[-1];
+	$endPage =~ s/\.pdf//;
+	outputSample($dir, $contentsID, $sampleType, $startPage, $endPage);
 	
 	if (-f "$dir/cover.pdf") {
 		system "$base/../poppler/utils/pdftoppm -cropbox -l 1 -scale-to 480 -jpeg $dir/cover.pdf $workdir/cover";
