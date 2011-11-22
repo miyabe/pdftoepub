@@ -646,7 +646,8 @@ sub generate {
 	}
 	my $zip = Archive::Zip->new();
 	$zip->addTree($outdir, '');
-	$zip->writeToFileNamed($outfile)
+	$zip->writeToFileNamed($outfile);
+	return 1;
 }
 
 my $src = $ARGV[0];
@@ -656,26 +657,26 @@ my $jpg = 0;
 
 sub process {
 	my $src = $_[0];
-	#eval {
+	my $ret = 1;
 	if ($jpg eq 'raster') {
-		transcode($src, $dest, 1) or return 0;
-		generate($src, $dest) or return 0;
+		transcode($src, $dest, 1) or ($ret = 0);
+		generate($src, $dest) or ($ret = 0);
 	}
 	elsif ($jpg eq 'svg') {
-		transcode($src, $dest, 0) or return 0;
-		generate($src, $dest) or return 0;
+		transcode($src, $dest, 0) or ($ret = 0);
+		generate($src, $dest) or ($ret = 0);
 	}
 	else {
 		my $destdir = "$dest/raster";
 		mkdir $destdir;
-		transcode($src, $destdir, 1) or return 0;
-		generate($src, $destdir) or return 0;
+		transcode($src, $destdir, 1) or ($ret = 0);
+		generate($src, $destdir) or ($ret = 0);
 		$destdir = "$dest/svg";
 		mkdir $destdir;
-		transcode($src, $destdir, 0) or return 0;
-		generate($src, $destdir) or return 0;
+		transcode($src, $destdir, 0) or ($ret = 0);
+		generate($src, $destdir) or ($ret = 0);
 	}
-	#}
+	return $ret;
 }
 if ($src =~ /^.+\/$/) {
 	my $dir;
@@ -700,3 +701,4 @@ else {
 		exit(-1);
 	}
 }
+exit(0);
