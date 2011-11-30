@@ -21,6 +21,17 @@ binmode STDOUT, ":utf8";
 # 画面の高さ
 our $view_height = 2068;
 
+our $aaVector = 'yes';
+
+for (my $i = 0; $i < @ARGV; ++$i) {
+	if ($ARGV[$i] eq '-view-height') {
+		$view_height = $ARGV[++$i];
+	}
+	elsif ($ARGV[$i] eq '-aaVector') {
+		$aaVector = $ARGV[++$i];
+	}
+}
+
 # ファイルポインタ格納用
 our $fp;
 
@@ -224,14 +235,14 @@ EOD
 				closedir($dh);
 				foreach my $file (@files) {
 					my ($num) = ($file =~ /^(\d{5})\.pdf$/);
-					system "$base/../poppler/utils/pdftoppm -cropbox -jpeg -scale-to $view_height $pdfdir/$file > $outdir/$num.jpg";
+					system "$base/../poppler/utils/pdftoppm -cropbox -jpeg -aaVector $aaVector -scale-to $view_height $pdfdir/$file > $outdir/$num.jpg";
 					if ($?) {
 						print STDERR "$dir: $file をJPEGに変換する際にエラーが発生しました。\n";
 					}
 				}
 			}
 			else {
-				system "$base/../poppler/utils/pdftoppm -cropbox -jpeg -scale-to $view_height $pdfdir $outdir/";
+				system "$base/../poppler/utils/pdftoppm -cropbox -jpeg -aaVector $aaVector -scale-to $view_height $pdfdir $outdir/";
 				if ($?) {
 					print STDERR "$dir: $pdfdir をJPEGに変換する際にエラーが発生しました。\n";
 				}
@@ -241,7 +252,7 @@ EOD
 			closedir($dh);
 			($w, $h) = imgsize("$outdir/".$files[0]);
 			if (-f "$dir/cover.pdf") {
-				system "$base/../poppler/utils/pdftoppm -cropbox -jpeg -scale-to $view_height $dir/cover.pdf > $outdir/00000.jpg";
+				system "$base/../poppler/utils/pdftoppm -cropbox -jpeg -aaVector $aaVector -scale-to $view_height $dir/cover.pdf > $outdir/00000.jpg";
 				if ($?) {
 					print STDERR "$dir: cover.pdf をJPEGに変換する際にエラーが発生しました。\n";
 					last;
