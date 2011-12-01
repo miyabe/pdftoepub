@@ -85,6 +85,8 @@ sub transcode {
 	
 	# メタデータを読み込む
 	my ($publisher, $publisher_kana, $name, $kana, $cover_date, $sales_date, $sales_yyyy, $sales_mm, $sales_dd, $introduce, $issued, $ppd, $orientation, $modified, $datatype);
+	my %pageToHeight = ();
+	my %pageToDpi = ();
 	{
 		my $xp = XML::XPath->new(filename => $metafile);
 		
@@ -185,6 +187,15 @@ EOD
   </body>
 </html>
 EOD
+		my $pageContentList = $xp->find("/Content/PageContentList/PageContent");
+		foreach my $pageContent ($pageContentList->get_nodelist) {
+			my $pageNo = trim($xp->findvalue("PageNo/text()", $pageContent)->value)+0;
+			my $viewHeight = trim($xp->findvalue("ViewHeight/text()", $pageContent)->value);
+			my $Dpi = trim($xp->findvalue("Resolution/text()", $pageContent)->value);
+			$pageToHeight{$pageNo} = $viewHeight;
+			$pageToDpi{$pageNo} = $Dpi;
+		}
+		
 		close($fp);
 	}
 	
@@ -235,7 +246,21 @@ EOD
 				closedir($dh);
 				foreach my $file (@files) {
 					my ($num) = ($file =~ /^(\d{5})\.pdf$/);
-					system "$base/../poppler/utils/pdftoppm -cropbox -jpeg -aaVector $aaVector -scale-to $view_height $pdfdir/$file > $outdir/$num.jpg";
+					my $scale;
+					my $viewHeight = $pageToHeight{$num+0};
+					if (!$viewHeight) {
+						$viewHeight = $pageToDpi{$num+0};
+						if (!$viewHeight) {
+							$scale = "-scale-to $view_height";
+						}
+						else {
+							$scale = "-r $viewHeight";
+						}
+					}
+					else {
+						$scale = "-scale-to $viewHeight";
+					}
+					system "$base/../poppler/utils/pdftoppm -cropbox -jpeg -aaVector $aaVector $scale $pdfdir/$file > $outdir/$num.jpg";
 					if ($?) {
 						print STDERR "$dir: $file をJPEGに変換する際にエラーが発生しました。\n";
 					}
@@ -252,7 +277,21 @@ EOD
 			closedir($dh);
 			($w, $h) = imgsize("$outdir/".$files[0]);
 			if (-f "$dir/cover.pdf") {
-				system "$base/../poppler/utils/pdftoppm -cropbox -jpeg -aaVector $aaVector -scale-to $view_height $dir/cover.pdf > $outdir/00000.jpg";
+				my $scale;
+				my $viewHeight = $pageToHeight{0};
+				if (!$viewHeight) {
+					$viewHeight = $pageToDpi{0};
+					if (!$viewHeight) {
+						$scale = "-scale-to $view_height";
+					}
+					else {
+						$scale = "-r $viewHeight";
+					}
+				}
+				else {
+					$scale = "-scale-to $viewHeight";
+				}
+				system "$base/../poppler/utils/pdftoppm -cropbox -jpeg -aaVector $aaVector $scale $dir/cover.pdf > $outdir/00000.jpg";
 				if ($?) {
 					print STDERR "$dir: cover.pdf をJPEGに変換する際にエラーが発生しました。\n";
 					last;
