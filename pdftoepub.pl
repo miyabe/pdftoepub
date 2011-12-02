@@ -267,9 +267,26 @@ EOD
 				}
 			}
 			else {
-				system "$base/../poppler/utils/pdftoppm -cropbox -jpeg -aaVector $aaVector -scale-to $view_height $pdfdir $outdir/";
-				if ($?) {
-					print STDERR "$dir: $pdfdir をJPEGに変換する際にエラーが発生しました。\n";
+				for (my $i = 1; ; ++$i) {
+					my $scale;
+					my $viewHeight = $pageToHeight{$i};
+					if (!$viewHeight) {
+						$viewHeight = $pageToDpi{$i};
+						if (!$viewHeight) {
+							$scale = "-scale-to $view_height";
+						}
+						else {
+							$scale = "-r $viewHeight";
+						}
+					}
+					else {
+						$scale = "-scale-to $viewHeight";
+					}
+					system "$base/../poppler/utils/pdftoppm -f $i -l $i -cropbox -jpeg -aaVector $aaVector $scale $pdfdir $outdir/";
+					if ($?) {
+						print STDERR "$dir: $pdfdir をJPEGに変換する際にエラーが発生しました。\n";
+					}
+					(-f sprintf("$outdir/%05d.jpg", $i)) or last;
 				}
 			}
 			opendir $dh, "$outdir";
@@ -611,26 +628,43 @@ sub generate {
 	# Read meta data.
 	sub outputSample {
 		my ($dir, $contentsID, $sampleType, $startPage, $endPage) = @_;
-		do {
-			my $pdf = sprintf("$pdfdir/%05d.pdf", $startPage);
-			if (-f $pdf) {
-				if ($sampleType eq "s") {
-					system "$base/../poppler/utils/pdftoppm -cropbox -scale-to 480 -jpeg $pdf $outdir/";
-					if ($?) {
-						print STDERR "$dir: $pdf をJPEGに変換する際にエラーが発生しました。\n";
-					}
-					else {
-						move "$outdir/00001.jpg", sprintf("$outdir/s_$contentsID"."_%04d.jpg", $startPage);
-					}
+		my $scale;
+		if ($sampleType eq "s") {
+			$scale = "-scale-to 480";
+		}
+		elsif ($sampleType eq "t") {
+			$scale = "-scale-to-x 198 -scale-to-y 285";
+		}
+		my $pdf = "$dir/$contentsID.pdf";
+		if (-f $pdf) {
+			if ($startPage == -1) {
+				system "$base/../poppler/utils/pdftoppm -cropbox $scale -jpeg $pdf $outdir/";
+			}
+			else {
+				system "$base/../poppler/utils/pdftoppm -f $startPage -l $endPage -cropbox $scale -jpeg $pdf $outdir/";
+			}
+			if ($startPage == -1) {
+				$startPage = 1;
+			}
+			for (my $i = $startPage; ; ++$i) {
+				my $file = sprintf("$outdir/%05d.jpg", $i);
+				if (!(-f $file)) {
+					last;
 				}
-				elsif ($sampleType eq "t") {
-					system "$base/../poppler/utils/pdftoppm -cropbox -scale-to-x 198 -scale-to-y 285 -jpeg $pdf $outdir/";
-					if ($?) {
-						print STDERR "$dir: $pdf をJPEGに変換する際にエラーが発生しました。\n";
-					}
-					else {
-						move "$outdir/00001.jpg", sprintf("$outdir/t_$contentsID"."_%04d.jpg", $startPage);
-					}
+				move $file, sprintf("$outdir/$sampleType"."_$contentsID"."_%04d.jpg", $i);
+			}
+			return;
+		}
+		
+		do {
+			$pdf = sprintf("$pdfdir/%05d.pdf", $startPage);
+			if (-f $pdf) {
+				system "$base/../poppler/utils/pdftoppm -cropbox $scale -jpeg $pdf $outdir/";
+				if ($?) {
+					print STDERR "$dir: $pdf をJPEGに変換する際にエラーが発生しました。\n";
+				}
+				else {
+					move "$outdir/00001.jpg", sprintf("$outdir/$sampleType"."_$contentsID"."_%04d.jpg", $startPage);
 				}
 			}
 			++$startPage;
@@ -646,17 +680,31 @@ sub generate {
 		$endPage = trim($xp->findvalue("EndPage/text()")->value);
 		outputSample($dir, $contentsID, $sampleType, $startPage, $endPage);
 	}
+	if (-f $metafile2) {
+		$xp = XML::XPath->new(filename => $metafile2);
+		$sampleType = trim($xp->findvalue("/ContentsSample/SampleType/text()")->value);
+		if ($sampleType eq "s") {
+			$startPage = trim($xp->findvalue("/ContentsSample/StartPage/text()")->value);
+			$endPage = trim($xp->findvalue("/ContentsSample/EndPage/text()")->value);
+			outputSample($dir, $contentsID, $sampleType, $startPage, $endPage);
+		}
+	}
 	
 	$sampleType = "t";
-	my $dh;
-	opendir($dh, $pdfdir);
-	my @files = sort grep {/^\d{5}\.pdf$/} readdir($dh);
-	closedir($dh);
-	$startPage = $files[0];
-	$startPage =~ s/\.pdf//;
-	$endPage = $files[-1];
-	$endPage =~ s/\.pdf//;
-	outputSample($dir, $contentsID, $sampleType, $startPage, $endPage);
+	if (-d $pdfdir) {
+		my $dh;
+		opendir($dh, $pdfdir);
+		my @files = sort grep {/^\d{5}\.pdf$/} readdir($dh);
+		closedir($dh);
+		$startPage = $files[0];
+		$startPage =~ s/\.pdf//;
+		$endPage = $files[-1];
+		$endPage =~ s/\.pdf//;
+		outputSample($dir, $contentsID, $sampleType, $startPage, $endPage);
+	}
+	else {
+		outputSample($dir, $contentsID, $sampleType, -1, -1);
+	}
 	
 	if (-f "$dir/cover.pdf") {
 		system "$base/../poppler/utils/pdftoppm -cropbox -l 1 -scale-to 480 -jpeg $dir/cover.pdf $workdir/cover";
@@ -673,7 +721,7 @@ sub generate {
 		if (-f "$dir/cover.jpg") {
 			$file = "$dir/cover.jpg";
 		}
-		else {
+		elsif(-d "$dir/appendix") {
 			my $dh;
 			opendir($dh, "$dir/appendix");
 			my @files = sort grep {/^[^\.].*\.jpg$/} readdir($dh);
@@ -681,6 +729,9 @@ sub generate {
 			if (@files) {
 				$file = "$dir/appendix/".$files[0];
 			}
+		}
+		else {
+			$file = "$outdir/00001.jpg";
 		}
 		if (-f $file) {
 			my $image = Image::Magick->new;
