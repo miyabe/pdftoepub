@@ -217,9 +217,10 @@ cairo_font_face_tをキャッシュしているが、縦書き横書き（wmode�
 
 ・pdftoppm.cc
 ファイル名の形式を00000.jpgにした
+-jpegcompressionというJPEGの画質を指定するオプションを入れた。引数の形式は "q=画質"
 
 ・SplashBitmap.cc
-JPEGの画質を100にした
+compressionStringでJPEGの画質を指定できるようにした。文字列の形式は "q=画質"
 
 ■ ブックリスタ
 ちび見の生成
