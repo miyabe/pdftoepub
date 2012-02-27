@@ -21,6 +21,9 @@ binmode STDOUT, ":utf8";
 # 画面の高さ
 our $view_height = 2068;
 
+# 画質
+our $default_qf = 98;
+
 our $aaVector = 'yes';
 
 for (my $i = 0; $i < @ARGV; ++$i) {
@@ -29,6 +32,9 @@ for (my $i = 0; $i < @ARGV; ++$i) {
 	}
 	elsif ($ARGV[$i] eq '-aaVector') {
 		$aaVector = $ARGV[++$i];
+	}
+	elsif ($ARGV[$i] eq '-quality') {
+		$default_qf = $ARGV[++$i];
 	}
 }
 
@@ -87,6 +93,7 @@ sub transcode {
 	my ($publisher, $publisher_kana, $name, $kana, $cover_date, $sales_date, $sales_yyyy, $sales_mm, $sales_dd, $introduce, $issued, $ppd, $orientation, $modified, $datatype);
 	my %pageToHeight = ();
 	my %pageToDpi = ();
+	my %pageToQuality = ();
 	{
 		my $xp = XML::XPath->new(filename => $metafile);
 		
@@ -192,8 +199,10 @@ EOD
 			my $pageNo = trim($xp->findvalue("PageNo/text()", $pageContent)->value)+0;
 			my $viewHeight = trim($xp->findvalue("ViewHeight/text()", $pageContent)->value);
 			my $Dpi = trim($xp->findvalue("Resolution/text()", $pageContent)->value);
+			my $qf = trim($xp->findvalue("Quality/text()", $pageContent)->value);
 			$pageToHeight{$pageNo} = $viewHeight;
 			$pageToDpi{$pageNo} = $Dpi;
+			$pageToQuality{$pageNo} = $qf;
 		}
 		
 		close($fp);
@@ -260,7 +269,14 @@ EOD
 					else {
 						$scale = "-scale-to $viewHeight";
 					}
-					system "$base/../poppler/utils/pdftoppm -cropbox -jpeg -aaVector $aaVector $scale $pdfdir/$file > $outdir/$num.jpg";
+					my $qf;
+					if ($pageToQuality{$num+0}) {
+						$qf = $pageToQuality{$num+0};
+					}
+					else {
+						$qf = $default_qf;
+					}
+					system "$base/../poppler/utils/pdftoppm -cropbox -jpeg -jpegcompression q=$qf -aaVector $aaVector $scale $pdfdir/$file > $outdir/$num.jpg";
 					if ($?) {
 						print STDERR "$dir: $file をJPEGに変換する際にエラーが発生しました。\n";
 					}
@@ -282,7 +298,14 @@ EOD
 					else {
 						$scale = "-scale-to $viewHeight";
 					}
-					system "$base/../poppler/utils/pdftoppm -f $i -l $i -cropbox -jpeg -aaVector $aaVector $scale $pdfdir $outdir/";
+					my $qf;
+					if ($pageToQuality{$i}) {
+						$qf = $pageToQuality{$i};
+					}
+					else {
+						$qf = $default_qf;
+					}
+					system "$base/../poppler/utils/pdftoppm -f $i -l $i -cropbox -jpeg -jpegcompression q=$qf -aaVector $aaVector $scale $pdfdir $outdir/";
 					if ($?) {
 						print STDERR "$dir: $pdfdir をJPEGに変換する際にエラーが発生しました。\n";
 					}
@@ -308,7 +331,16 @@ EOD
 				else {
 					$scale = "-scale-to $viewHeight";
 				}
-				system "$base/../poppler/utils/pdftoppm -cropbox -jpeg -aaVector $aaVector $scale $dir/cover.pdf > $outdir/00000.jpg";
+				my $qf;
+				if ($pageToQuality{0}) {
+					$qf = $pageToQuality{0};
+				}
+				else {
+					$qf = $default_qf;
+				}
+				
+				# カバー
+				system "$base/../poppler/utils/pdftoppm -cropbox -jpeg -jpegcompression q=$qf -aaVector $aaVector $scale $dir/cover.pdf > $outdir/00000.jpg";
 				if ($?) {
 					print STDERR "$dir: cover.pdf をJPEGに変換する際にエラーが発生しました。\n";
 					last;
@@ -626,6 +658,7 @@ sub generate {
 	copy("$workdir/epub/$opf", "$destdir/$opf");
 	
 	# Read meta data.
+	# サンプル画像
 	sub outputSample {
 		my ($dir, $contentsID, $sampleType, $startPage, $endPage) = @_;
 		my $scale;
