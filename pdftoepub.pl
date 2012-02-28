@@ -26,6 +26,8 @@ our $default_qf = 98;
 
 our $aaVector = 'yes';
 
+our $imageSuffix = 'jpg';
+
 for (my $i = 0; $i < @ARGV; ++$i) {
 	if ($ARGV[$i] eq '-view-height') {
 		$view_height = $ARGV[++$i];
@@ -35,6 +37,9 @@ for (my $i = 0; $i < @ARGV; ++$i) {
 	}
 	elsif ($ARGV[$i] eq '-quality') {
 		$default_qf = $ARGV[++$i];
+	}
+	elsif ($ARGV[$i] eq '-png') {
+		$imageSuffix = 'png';
 	}
 }
 
@@ -91,9 +96,10 @@ sub transcode {
 	
 	# メタデータを読み込む
 	my ($publisher, $publisher_kana, $name, $kana, $cover_date, $sales_date, $sales_yyyy, $sales_mm, $sales_dd, $introduce, $issued, $ppd, $orientation, $modified, $datatype);
-	my %pageToHeight = ();
-	my %pageToDpi = ();
-	my %pageToQuality = ();
+	our %pageToHeight = ();
+	our %pageToDpi = ();
+	our %pageToQuality = ();
+	our %pageToFormat = ();
 	{
 		my $xp = XML::XPath->new(filename => $metafile);
 		
@@ -200,9 +206,11 @@ EOD
 			my $viewHeight = trim($xp->findvalue("ViewHeight/text()", $pageContent)->value);
 			my $Dpi = trim($xp->findvalue("Resolution/text()", $pageContent)->value);
 			my $qf = trim($xp->findvalue("Quality/text()", $pageContent)->value);
+			my $fmt = trim($xp->findvalue("ImageFormat/text()", $pageContent)->value);
 			$pageToHeight{$pageNo} = $viewHeight;
 			$pageToDpi{$pageNo} = $Dpi;
 			$pageToQuality{$pageNo} = $qf;
+			$pageToFormat{$pageNo} = $fmt;
 		}
 		
 		close($fp);
@@ -244,6 +252,46 @@ EOD
 		close($fp);
 	}
 	
+	sub imageOptions {
+		my ($page) = @_;
+		my $scale;
+		my $viewHeight = $pageToHeight{$page};
+		if (!$viewHeight) {
+			$viewHeight = $pageToDpi{$page};
+			if (!$viewHeight) {
+				$scale = "-scale-to $view_height";
+			}
+			else {
+				$scale = "-r $viewHeight";
+			}
+		}
+		else {
+			$scale = "-scale-to $viewHeight";
+		}
+		my $qf;
+		if ($pageToQuality{$page}) {
+			$qf = $pageToQuality{$page};
+		}
+		else {
+			$qf = $default_qf;
+		}
+		my $suffix;
+		my $imageFormat;
+		if ($pageToFormat{$page}) {
+			$suffix = $pageToFormat{$page};
+		}
+		else {
+			$suffix = $imageSuffix;
+		}
+		if ($suffix eq 'png') {
+			$imageFormat = '-png';
+		}
+		else {
+			$imageFormat = '-jpeg';
+		}
+		return ($scale, $viewHeight, $qf, $suffix, $imageFormat);
+	}
+	
 	# PDFからSVGまたは画像に変換する
 	{
 		if ($raster) {
@@ -255,106 +303,46 @@ EOD
 				closedir($dh);
 				foreach my $file (@files) {
 					my ($num) = ($file =~ /^(\d{5})\.pdf$/);
-					my $scale;
-					my $viewHeight = $pageToHeight{$num+0};
-					if (!$viewHeight) {
-						$viewHeight = $pageToDpi{$num+0};
-						if (!$viewHeight) {
-							$scale = "-scale-to $view_height";
-						}
-						else {
-							$scale = "-r $viewHeight";
-						}
-					}
-					else {
-						$scale = "-scale-to $viewHeight";
-					}
-					my $qf;
-					if ($pageToQuality{$num+0}) {
-						$qf = $pageToQuality{$num+0};
-					}
-					else {
-						$qf = $default_qf;
-					}
-					system "$base/../poppler/utils/pdftoppm -cropbox -jpeg -jpegcompression q=$qf -aaVector $aaVector $scale $pdfdir/$file > $outdir/$num.jpg";
+					my ($scale, $viewHeight, $qf, $suffix, $imageFormat) = imageOptions($num+0);
+					system "$base/../poppler/utils/pdftoppm -cropbox $imageFormat -jpegcompression q=$qf -aaVector $aaVector $scale $pdfdir/$file > $outdir/$num.$suffix";
 					if ($?) {
-						print STDERR "$dir: $file をJPEGに変換する際にエラーが発生しました。\n";
+						print STDERR "$dir: $file を画像に変換する際にエラーが発生しました。\n";
 					}
 				}
 			}
 			else {
 				for (my $i = 1; ; ++$i) {
-					my $scale;
-					my $viewHeight = $pageToHeight{$i};
-					if (!$viewHeight) {
-						$viewHeight = $pageToDpi{$i};
-						if (!$viewHeight) {
-							$scale = "-scale-to $view_height";
-						}
-						else {
-							$scale = "-r $viewHeight";
-						}
-					}
-					else {
-						$scale = "-scale-to $viewHeight";
-					}
-					my $qf;
-					if ($pageToQuality{$i}) {
-						$qf = $pageToQuality{$i};
-					}
-					else {
-						$qf = $default_qf;
-					}
-					system "$base/../poppler/utils/pdftoppm -f $i -l $i -cropbox -jpeg -jpegcompression q=$qf -aaVector $aaVector $scale $pdfdir $outdir/";
+					my ($scale, $viewHeight, $qf, $suffix, $imageFormat) = imageOptions($i);
+					system "$base/../poppler/utils/pdftoppm -f $i -l $i -cropbox $imageFormat -jpegcompression q=$qf -aaVector $aaVector $scale $pdfdir $outdir/";
 					if ($?) {
-						print STDERR "$dir: $pdfdir をJPEGに変換する際にエラーが発生しました。\n";
+						print STDERR "$dir: $pdfdir を画像に変換する際にエラーが発生しました。\n";
 					}
-					(-f sprintf("$outdir/%05d.jpg", $i)) or last;
+					(-f sprintf("$outdir/%05d.$suffix", $i)) or last;
 				}
 			}
 			opendir $dh, "$outdir";
-			my @files = sort grep {/^\d{5}\.jpg$/} readdir $dh;
+			my @files = sort grep {/^\d{5}\.[jp][pn]g$/} readdir $dh;
 			closedir($dh);
 			($w, $h) = imgsize("$outdir/".$files[0]);
 			if (-f "$dir/cover.pdf") {
-				my $scale;
-				my $viewHeight = $pageToHeight{0};
-				if (!$viewHeight) {
-					$viewHeight = $pageToDpi{0};
-					if (!$viewHeight) {
-						$scale = "-scale-to $view_height";
-					}
-					else {
-						$scale = "-r $viewHeight";
-					}
-				}
-				else {
-					$scale = "-scale-to $viewHeight";
-				}
-				my $qf;
-				if ($pageToQuality{0}) {
-					$qf = $pageToQuality{0};
-				}
-				else {
-					$qf = $default_qf;
-				}
+				my ($scale, $viewHeight, $qf, $suffix, $imageFormat) = imageOptions(0);
 				
 				# カバー
-				system "$base/../poppler/utils/pdftoppm -cropbox -jpeg -jpegcompression q=$qf -aaVector $aaVector $scale $dir/cover.pdf > $outdir/00000.jpg";
+				system "$base/../poppler/utils/pdftoppm -cropbox $imageFormat -jpegcompression q=$qf -aaVector $aaVector $scale $dir/cover.pdf > $outdir/00000.$suffix";
 				if ($?) {
-					print STDERR "$dir: cover.pdf をJPEGに変換する際にエラーが発生しました。\n";
+					print STDERR "$dir: cover.pdf を画像に変換する際にエラーが発生しました。\n";
 					last;
 				}
-				($w, $h) = imgsize("$outdir/00000.jpg");
+				($w, $h) = imgsize("$outdir/00000.$suffix");
 			}
 			elsif (-f "$dir/cover.jpg") {
 				copy "$dir/cover.jpg", "$outdir/00000.jpg";
 			}
 			opendir $dh, "$outdir";
-			@files = sort grep {/^\d{5}\.jpg$/} readdir $dh;
+			@files = sort grep {/^\d{5}\.[jp][pn]g$/} readdir $dh;
 			closedir($dh);
 			foreach my $file (@files) {
-				my ($i) = ($file =~ /^(\d+)\.jpg$/);
+				my ($i) = ($file =~ /^(\d+)\.[jp][pn]g$/);
 				wrapimage("$outdir/$file", "$outdir/$i.svg",
 					$w, $h, ($i % 2 == (($ppd eq 'rtl') ? 0 : 1)));
 			}
@@ -786,17 +774,17 @@ sub generate {
 
 my $src = $ARGV[0];
 my $dest = $ARGV[1];
-my $jpg = 0;
-(@ARGV >= 3) and $jpg = $ARGV[2];
+my $outputType = 0;
+(@ARGV >= 3) and $outputType = $ARGV[2];
 
 sub process {
 	my $src = $_[0];
 	my $ret = 1;
-	if ($jpg eq 'raster') {
+	if ($outputType eq 'raster') {
 		transcode($src, $dest, 1) or ($ret = 0);
 		generate($src, $dest) or ($ret = 0);
 	}
-	elsif ($jpg eq 'svg') {
+	elsif ($outputType eq 'svg') {
 		transcode($src, $dest, 0) or ($ret = 0);
 		generate($src, $dest) or ($ret = 0);
 	}
