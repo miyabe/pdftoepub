@@ -45,7 +45,7 @@ make clean
 make
 
 # popplerをビルド
-# libfreetype6-dev, libglib2.0-dev, poppler-data, pango-graphiteパッケージを入れておく必要があります。
+# libfreetype6-dev, libglib2.0-dev, poppler-data, pango-graphite, libjpeg-devパッケージを入れておく必要があります。
 cd $POPPLER_DIR
 ./autogen.sh
 make clean
@@ -73,7 +73,7 @@ PDFをSVGファイルに変換します。SVGファイルは１ページ目か�
 [ID]/m_[ID].xml -サンプル属性XML
 [ID]/ins -挿し込みデータ
 
-・pdftepub.pl ディレクトリ名 出力先 [raster|svg] [-view-height ビュー高さ] [-aaVector yes|no] [-quality 画質] [-png]
+・pdftepub.pl ディレクトリ名 出力先 [raster|svg] [-view-height ビュー高さ] [-aaVector yes|no] [-quality 画質] [-png] [-epub2]
 PDFからEPUBを生成するPerlスクリプトです。
 ディレクトリ名の最後に / を付けると、さらにディレクトリ中にある複数のディレクトリを処理します。
 raster|svgのいずれかを指定すると、全体をラスター化したもの、SVGにしたもののいずれかを出力します。指定しない場合は両方を出力します。
@@ -90,6 +90,8 @@ EPUBに挿し込むデータは挿し込みデータディレクトリ([ID]/ins)
 -qualityは、rasterで出力されるJPEG画像のデフォルト画質で、1から100の値を設定します。デフォルトは98です。PNGには無関係です。
 
 -pngを付けるとPNG形式で出力します。
+
+-epub2を付けるとEPUB2互換形式で出力します。
 
 ・generate-sample.pl ディレクトリ名 出力先
 サンプル画像、サムネイルを生成します
