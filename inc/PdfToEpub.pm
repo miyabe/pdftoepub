@@ -189,6 +189,7 @@ sub transcode {
 	our %pageToDpi     = ();
 	our %pageToQuality = ();
 	our %pageToFormat  = ();
+	my %blankPages = ();
 	{
 		my $xp = XML::XPath->new( filename => $metafile );
 
@@ -355,6 +356,8 @@ EOD
 			my $pageNo =
 			  trim( $xp->findvalue( "PageNo/text()", $pageContent )->value ) +
 			  0;
+			my $pageKbn = trim(
+				$xp->findvalue( "PageKbn/text()", $pageContent )->value ) + 0;
 			my $viewHeight = trim(
 				$xp->findvalue( "ViewHeight/text()", $pageContent )->value );
 			my $Dpi = trim(
@@ -363,10 +366,13 @@ EOD
 			  trim( $xp->findvalue( "Quality/text()", $pageContent )->value );
 			my $fmt = trim(
 				$xp->findvalue( "ImageFormat/text()", $pageContent )->value );
-			$pageToHeight{$pageNo}  = $viewHeight;
-			$pageToDpi{$pageNo}     = $Dpi;
+			if ($pageKbn == 3) {
+				$blankPages{$pageNo} = 1;
+			}
+			$pageToHeight{$pageNo} = $viewHeight;
+			$pageToDpi{$pageNo} = $Dpi;
 			$pageToQuality{$pageNo} = $qf;
-			$pageToFormat{$pageNo}  = $fmt;
+			$pageToFormat{$pageNo} = $fmt;
 		}
 
 		close($fp);
@@ -415,6 +421,7 @@ EOD
 	# PDFからSVGまたは画像に変換する
 	{
 		if ($raster) {
+			# 画像に変換
 			my $dh;
 			my ( $w, $h );
 			if ( -d $pdfdir ) {
@@ -423,6 +430,9 @@ EOD
 				closedir($dh);
 				foreach my $file (@files) {
 					my ($num) = ( $file =~ /^(\d{5})\.pdf$/ );
+					if ($blankPages{$num + 0}) {
+						next;
+					}
 					my ( $scale, $viewHeight, $qf, $suffix, $imageFormat ) =
 					  imageOptions( $num + 0 );
 					system
@@ -435,6 +445,9 @@ EOD
 			}
 			else {
 				for ( my $i = 1 ; ; ++$i ) {
+					if ($blankPages{$i}) {
+						next;
+					}
 					my ( $scale, $viewHeight, $qf, $suffix, $imageFormat ) =
 					  imageOptions($i);
 					system
@@ -477,7 +490,12 @@ EOD
 			}
 		}
 		else {
+			# SVGに変換
 			system "$pdftosvg $pdfdir $outdir" . ( $otf ? ' true' : '' );
+			foreach my $i (keys(%blankPages)) {
+				unlink sprintf( "$outdir/%05d.svg", $i);
+			}
+			
 			if ( !( -f "$dir/cover.pdf" ) ) {
 				if ( -f "$dir/cover.jpg" ) {
 					copy "$dir/cover.jpg", "$outdir/00000.jpg";
