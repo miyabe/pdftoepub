@@ -366,7 +366,7 @@ EOD
 			  trim( $xp->findvalue( "Quality/text()", $pageContent )->value );
 			my $fmt = trim(
 				$xp->findvalue( "ImageFormat/text()", $pageContent )->value );
-			if ($pageKbn == 3) {
+			if ($pageKbn == 3 || $pageKbn == 99) {
 				$blankPages{$pageNo} = 1;
 			}
 			$pageToHeight{$pageNo} = $viewHeight;
