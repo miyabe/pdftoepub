@@ -67,7 +67,7 @@ EOD
 
 # SVGをXHTMLでくるむ
 sub wrapsvg {
-	my ( $infile, $outfile ) = @_;
+	my ( $infile, $outfile, $name ) = @_;
 	
 	my $infp;
 	open( $infp, "< $infile" );
@@ -82,7 +82,8 @@ sub wrapsvg {
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="initial-scale=1.0" />
-    <title>タイトル 1ページ</title>
+    <title>$name</title>
+    <link rel="stylesheet" href="Stylesheet.css" type="text/css"/>
   </head>
   <body>
     <div>
@@ -238,7 +239,7 @@ sub transcode {
 		}
 
 		$ppd = trim(
-			$xp->findvalue("/Content/ContentInfo/PageOpenWay/text()")->value );
+			$xp->findvalue("/Content/ContentInfo/PageOpenWay/text()")->value ) + 0;
 		$ppd = ( $ppd == 1 ) ? 'ltr' : 'rtl';
 
 		$orientation = trim(
@@ -719,7 +720,7 @@ EOD
 				my $id = "t$i";
 				my $file;
 				if ($epub2) {
-					wrapsvg($svgfile, sprintf( "$outdir/%05d.xhtml", $i ));
+					wrapsvg($svgfile, sprintf( "$outdir/%05d.xhtml", $i, $name));
 					unlink $svgfile;
 					$file = sprintf( "%05d.xhtml", $i );
 					print $fp
