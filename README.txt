@@ -226,6 +226,9 @@ cairo_font_face_tをキャッシュしているが、縦書き横書き（wmode�
 ・SplashBitmap.cc
 compressionStringでJPEGの画質を指定できるようにした。文字列の形式は "q=画質"
 
+・Stream.cc
+1ビット画像のPredictor = 2の処理にバグがあったため修正。
+
 ■ ブックリスタ
 ちび見の生成
 pdftocairo -f [最初のページ] -l [最後のページ] -scale-to-x 198 -scale-to-y 285 -jpeg [PDF] [JPEGファイル]
