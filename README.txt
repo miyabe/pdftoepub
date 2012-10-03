@@ -49,7 +49,7 @@ make
 cd $POPPLER_DIR
 ./autogen.sh
 make clean
-./configure CAIRO_VERSION="1.9.14" CAIRO_CFLAGS="-I$CAIRO_DIR/ -I$CAIRO_DIR/src/ -I/usr/include/freetype2" CAIRO_LIBS="-L$CAIRO_DIR/src/.libs/ -lcairo" POPPLER_GLIB_CFLAGS="-I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I$CAIRO_DIR/ -I$CAIRO_DIR/src/" POPPLER_GLIB_LIBS="-lglib-2.0" --datarootdir=/usr/share
+./configure CAIRO_VERSION="1.9.14" CAIRO_CFLAGS="-I$CAIRO_DIR/ -I$CAIRO_DIR/src/ -I/usr/include/freetype2" CAIRO_LIBS="-L$CAIRO_DIR/src/.libs/ -lcairo" POPPLER_GLIB_CFLAGS="-I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I$CAIRO_DIR/ -I$CAIRO_DIR/src/" POPPLER_GLIB_LIBS="-lglib-2.0" --datarootdir=/usr/share
 make
 
 # pdftoepubをビルド
@@ -73,7 +73,7 @@ PDFをSVGファイルに変換します。SVGファイルは１ページ目か�
 [ID]/m_[ID].xml -サンプル属性XML
 [ID]/ins -挿し込みデータ
 
-・pdftepub.pl ディレクトリ名 出力先 [raster|svg] [-view-height ビュー高さ] [-aaVector yes|no] [-quality 画質] [-png] [-epub2]
+・pdftoepub.pl ディレクトリ名 出力先 [raster|svg] [-view-height ビュー高さ] [-aaVector yes|no] [-quality 画質] [-png] [-epub2]
 PDFからEPUBを生成するPerlスクリプトです。
 ディレクトリ名の最後に / を付けると、さらにディレクトリ中にある複数のディレクトリを処理します。
 raster|svgのいずれかを指定すると、全体をラスター化したもの、SVGにしたもののいずれかを出力します。指定しない場合は両方を出力します。
@@ -92,6 +92,9 @@ EPUBに挿し込むデータは挿し込みデータディレクトリ([ID]/ins)
 -pngを付けるとPNG形式で出力します。
 
 -epub2を付けるとEPUB2互換形式で出力します。
+
+戻り値：単一ファイルを処理する場合　成功した場合 0 エラー発生時 -1
+ディレクトリを指定した場合は常に 0　が戻ります
 
 ・generate-sample.pl ディレクトリ名 出力先
 サンプル画像、サムネイルを生成します
