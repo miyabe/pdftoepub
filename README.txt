@@ -38,6 +38,7 @@ cd $PIXMAN_DIR
 make
 
 # cairoをビルド
+# libxext-dev
 cd $CAIRO_DIR
 ./autogen.sh
 make clean
@@ -49,10 +50,11 @@ make
 cd $POPPLER_DIR
 ./autogen.sh
 make clean
-./configure CAIRO_VERSION="1.9.14" CAIRO_CFLAGS="-I$CAIRO_DIR/ -I$CAIRO_DIR/src/ -I/usr/include/freetype2" CAIRO_LIBS="-L$CAIRO_DIR/src/.libs/ -lcairo" POPPLER_GLIB_CFLAGS="-I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I$CAIRO_DIR/ -I$CAIRO_DIR/src/" POPPLER_GLIB_LIBS="-lglib-2.0" --datarootdir=/usr/share
+./configure CAIRO_VERSION="1.12.4" CAIRO_CFLAGS="-I$CAIRO_DIR/ -I$CAIRO_DIR/src/ -I/usr/include/freetype2" CAIRO_LIBS="-L$CAIRO_DIR/src/.libs/ -lcairo" POPPLER_GLIB_CFLAGS="-I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I$CAIRO_DIR/ -I$CAIRO_DIR/src/" POPPLER_GLIB_LIBS="-lglib-2.0" --datarootdir=/usr/share
 make
 
 # pdftoepubをビルド
+# libxml2-dev libgtk2.0-dev libgtk2.0 libpoppler-glib-dev パッケージを入れておく必要があります。
 cd $PDFTOEPUB_DIR
 make
 
@@ -208,8 +210,6 @@ cairo_svg_fontfile_finish (cairo_svg_fontfile_t   *fontfile);
 ■ popplerの修正内容
 ・CairoOutputDev.css
 cairoが対応している場合は、常にshow_text_glyphを呼び出すようにした。
-
-画像を72dpiに縮小していたが、これを2.6倍（187.2dpi）にした。
 
 ・CairoFontFace.cc
 cairo_font_face_tをキャッシュしているが、縦書き横書き（wmode）が違う場合でも同じフォントとして扱われ、縦書き横書きが混在した場合に縦書き部分に横書きフォントが使われてしまうバグがあったので、GtkFontのgetWModeが返す値もキャッシュのキーに加えた。

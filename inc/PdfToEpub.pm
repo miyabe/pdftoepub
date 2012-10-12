@@ -109,6 +109,8 @@ sub transcode {
 
 	# 画面の高さ
 	our $view_height = 2068;
+	# 解像度
+	our $dpi = 188;
 
 	# 画質
 	our $default_qf  = 98;
@@ -122,6 +124,10 @@ sub transcode {
 	for ( my $i = 0 ; $i < @ARGV ; ++$i ) {
 		if ( $ARGV[$i] eq '-view-height' ) {
 			$view_height = $ARGV[ ++$i ];
+		}
+		elsif ( $ARGV[$i] eq '-dpi' ) {
+			$dpi = $ARGV[ ++$i ];
+			$view_height = -1;
 		}
 		elsif ( $ARGV[$i] eq '-aaVector' ) {
 			$aaVector = $ARGV[ ++$i ];
@@ -383,17 +389,20 @@ EOD
 		my ($page) = @_;
 		my $scale;
 		my $viewHeight = $pageToHeight{$page};
+		if ( !$viewHeight && !$pageToDpi{$page}) {
+			$viewHeight = $view_height;
+		}
 		if ( !$viewHeight ) {
 			$viewHeight = $pageToDpi{$page};
-			if ( !$viewHeight ) {
-				$scale = "-scale-to $view_height";
-			}
-			else {
-				$scale = "-r $viewHeight";
-			}
+			$scale = "-r $viewHeight";
 		}
 		else {
-			$scale = "-scale-to $viewHeight";
+			if ( $viewHeight == -1 ) {
+				$scale = "-r $dpi";
+			}
+			else {
+				$scale = "-scale-to-y $viewHeight -scale-to-x -1";
+			}
 		}
 		my $qf;
 		if ( $pageToQuality{$page} ) {
