@@ -66,9 +66,16 @@ EOD
 }
 
 # SVGをXHTMLでくるむ
+# EPUB3 Fixed Layout でのみ使用
 sub wrapsvg {
 	my ( $infile, $outfile, $name ) = @_;
 	
+	my $xp =
+	  XML::XPath->new( filename => $infile );
+	my $viewBox = $xp->findvalue('/svg/@viewBox')->value;
+	my ( $width, $height ) =
+	  ( $viewBox =~ /^0 0 (\d+) (\d+)$/ );
+
 	my $infp;
 	open( $infp, "< $infile" );
 	binmode $infp, ":utf8";
@@ -81,7 +88,7 @@ sub wrapsvg {
 <html lang="ja-JP" xml:lang="ja-JP" xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="initial-scale=1.0" />
+    <meta name="viewport" content="width=$width, height=$height, initial-scale=1.0" />
     <title>$name</title>
     <link rel="stylesheet" href="Stylesheet.css" type="text/css"/>
   </head>
@@ -611,6 +618,14 @@ EOD
 <package xmlns="http://www.idpf.org/2007/opf"
          prefix="layout: http://xmlns.sony.net/e-book/prs/layoutoptions/
          prism: http://prismstandard.org/namespaces/basic/2.1
+EOD
+		if ($epub2) {
+			# EPUB3 Fixed Layout
+			print $fp <<"EOD";
+         rendition: http://www.idpf.org/vocab/rendition/#
+EOD
+		}
+		print $fp <<"EOD";
          prs: http://xmlns.sony.net/e-book/prs/"
          version="3.0"
          unique-identifier="BookID">
@@ -632,6 +647,17 @@ EOD
     <meta property="layout:orientation">$orientation</meta>
     <meta property="layout:viewport">width=$width, height=$height</meta>
     <meta property="prs:datatype">$datatype</meta>
+EOD
+		if ($epub2) {
+			# EPUB3 Fixed Layout
+			# 固定レイアウト、向き自動、見開き自動
+			print $fp <<"EOD";
+    <meta property="rendition:layout">pre-paginated</meta>
+    <meta property="rendition:orientation">auto</meta>
+    <meta property="rendition:spread">auto</meta>
+EOD
+		}
+		print $fp <<"EOD";
   </metadata>
   <manifest>
 EOD
@@ -644,8 +670,9 @@ EOD
 		print $fp
 "    <item id=\"nav\" href=\"nav.xhtml\" properties=\"nav\" media-type=\"application/xhtml+xml\"/>\n";
 
-		# ncx
+		# nav
 		if ($epub2) {
+			# EPUB3 Fixed Layout
 			print $fp
 "    <item id=\"ncx\" href=\"toc.ncx\" media-type=\"application/x-dtbncx+xml\"/>\n";
 		}
@@ -729,6 +756,7 @@ EOD
 				my $id = "t$i";
 				my $file;
 				if ($epub2) {
+					# EPUB3 Fixed Layout
 					wrapsvg($svgfile, sprintf( "$outdir/%05d.xhtml", $i, $name));
 					unlink $svgfile;
 					$file = sprintf( "%05d.xhtml", $i );
@@ -755,7 +783,12 @@ EOD
   </manifest>
   <spine$ncx page-progression-direction="$ppd">
 EOD
-
+		if ($epub2) {
+			# EPUB3 Fixed Layout
+			# 目次のリフローを許可する
+			print $fp "    <itemref idref=\"nav\" properties=\"rendition:layout-reﬂowable\"/>\n";
+		}
+		
 		foreach my $item (@items) {
 			my ( $id, $file, $i ) = @$item;
 			my $props =
