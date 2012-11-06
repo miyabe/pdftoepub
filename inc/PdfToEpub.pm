@@ -653,7 +653,7 @@ EOD
 			# 固定レイアウト、向き自動、見開き自動
 			print $fp <<"EOD";
     <meta property="rendition:layout">pre-paginated</meta>
-    <meta property="rendition:orientation">auto</meta>
+    <meta property="rendition:orientation">$orientation</meta>
     <meta property="rendition:spread">auto</meta>
 EOD
 		}
