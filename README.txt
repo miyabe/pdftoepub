@@ -75,7 +75,7 @@ PDFをSVGファイルに変換します。SVGファイルは１ページ目か�
 [ID]/m_[ID].xml -サンプル属性XML
 [ID]/ins -挿し込みデータ
 
-・pdftoepub.pl ディレクトリ名 出力先 [raster|svg] [-view-height ビュー高さ] [-aaVector yes|no] [-quality 画質] [-png] [-epub2]
+・pdftoepub.pl ディレクトリ名 出力先 [raster|svg] [-view-height ビュー高さ] [-aaVector yes|no] [-quality 画質] [-png] [-epub2] [-kobo]
 PDFからEPUBを生成するPerlスクリプトです。
 ディレクトリ名の最後に / を付けると、さらにディレクトリ中にある複数のディレクトリを処理します。
 raster|svgのいずれかを指定すると、全体をラスター化したもの、SVGにしたもののいずれかを出力します。指定しない場合は両方を出力します。
@@ -94,6 +94,8 @@ EPUBに挿し込むデータは挿し込みデータディレクトリ([ID]/ins)
 -pngを付けるとPNG形式で出力します。
 
 -epub2を付けるとEPUB2互換形式で出力します。
+
+-koboを付けると画像の中寄せ位置調整をしません。
 
 戻り値：単一ファイルを処理する場合　成功した場合 0 エラー発生時 -1
 ディレクトリを指定した場合は常に 0　が戻ります

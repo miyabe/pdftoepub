@@ -29,7 +29,7 @@ sub trim {
 
 # 画像をSVGでくるむ
 sub wrapimage {
-	my ( $infile, $outfile, $w, $h, $left ) = @_;
+	my ( $infile, $outfile, $w, $h, $left, $kobo ) = @_;
 	my ( $ww, $hh ) = imgsize($infile);
 
 	if ( $hh != $h ) {
@@ -45,10 +45,16 @@ sub wrapimage {
 
 	my $x;
 	if ($left) {
-		$x = $w - $ww + 1;
+		$x = $w - $ww;
+		if (! $kobo) {
+			$x = $x + 1;
+		}
 	}
 	else {
-		$x = -1;
+		$x = 0;
+		if (! $kobo) {
+			$x = $x - 1;
+		}
 	}
 
 	my $file = basename($infile);
@@ -127,6 +133,8 @@ sub transcode {
 	our $imageSuffix = 'jpg';
 	# EPUB2互換
 	my $epub2      = 0;
+	# Kobo向け
+	my $kobo      = 0;
 	
 	for ( my $i = 0 ; $i < @ARGV ; ++$i ) {
 		if ( $ARGV[$i] eq '-view-height' ) {
@@ -147,6 +155,9 @@ sub transcode {
 		}
 		elsif ( $ARGV[$i] eq '-epub2' ) {
 			$epub2 = 1;
+		}
+		elsif ( $ARGV[$i] eq '-kobo' ) {
+			$kobo = 1;
 		}
 	}
 
@@ -430,6 +441,7 @@ EOD
 			$imageFormat = '-png';
 		}
 		else {
+			$suffix = 'jpg';
 			$imageFormat = '-jpeg';
 		}
 		return ( $scale, $viewHeight, $qf, $suffix, $imageFormat );
@@ -442,6 +454,7 @@ EOD
 			my $dh;
 			my ( $w, $h );
 			if ( -d $pdfdir ) {
+				# ページ分割されたPDF
 				opendir $dh, "$pdfdir";
 				my @files = grep { /^\d{5}\.pdf$/ } readdir $dh;
 				closedir($dh);
@@ -461,6 +474,7 @@ EOD
 				}
 			}
 			else {
+				# 単一のPDF
 				for ( my $i = 1 ; ; ++$i ) {
 					if ($blankPages{$i}) {
 						next;
@@ -503,7 +517,7 @@ EOD
 			foreach my $file (@files) {
 				my ($i) = ( $file =~ /^(\d+)\.[jp][pn]g$/ );
 				wrapimage( "$outdir/$file", "$outdir/$i.svg", $w, $h,
-					( $i % 2 == ( ( $ppd eq 'rtl' ) ? 0 : 1 ) ) );
+					( $i % 2 == ( ( $ppd eq 'rtl' ) ? 0 : 1 ) ), $kobo );
 			}
 		}
 		else {
@@ -528,7 +542,7 @@ EOD
 					my ( $width, $height ) =
 					  ( $viewBox =~ /^0 0 (\d+) (\d+)$/ );
 					wrapimage( "$outdir/00000.jpg", "$outdir/00000.svg", $width,
-						$height, ( $ppd eq 'rtl' ) );
+						$height, ( $ppd eq 'rtl' ), $kobo );
 				}
 			}
 		}
