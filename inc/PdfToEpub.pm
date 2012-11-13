@@ -797,11 +797,6 @@ EOD
   </manifest>
   <spine$ncx page-progression-direction="$ppd">
 EOD
-		if ($epub2) {
-			# EPUB3 Fixed Layout
-			# 目次のリフローを許可する
-			print $fp "    <itemref idref=\"nav\" properties=\"rendition:layout-reﬂowable\"/>\n";
-		}
 		
 		foreach my $item (@items) {
 			my ( $id, $file, $i ) = @$item;
