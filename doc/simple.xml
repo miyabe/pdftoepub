@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Content>
+	<PublisherInfo>
+		<Name><![CDATA[出版社名]]></Name>
+		<Kana><![CDATA[しゅっぱんしゃめいかな]]></Kana>
+	</PublisherInfo>
+	<MagazineInfo>
+		<Name><![CDATA[雑誌名]]></Name>
+		<Kana><![CDATA[ざっしめいかな]]></Kana>
+	</MagazineInfo>
+	<CoverDate><![CDATA[2011年9月7日]]></CoverDate>
+	<SalesDate>2011-08-31</SalesDate>
+	<IntroduceScript><![CDATA[雑誌紹介文]]></IntroduceScript>
+	<DataType>magazine</DataType>
+	<ContentInfo>
+		<PageOpenWay>1</PageOpenWay>
+		<Orientation>0</Orientation>
+		<IndexList>
+			<Index>
+				<Title><![CDATA[タイトル]]></Title>
+				<StartPage>2</StartPage>
+				<EndPage>2</EndPage>
+			</Index>
+		</IndexList>
+	</ContentInfo>
+	<PageContentList>
+		<PageContent>
+			<PageNo>1</PageNo>
+			<PageText><![CDATA[ページ内のテキスト]]></PageText>
+			<PageKbn>1</PageKbn>
+			<ClosedTarget><![CDATA[非公開対象がある場合の補足説明]]></ClosedTarget>
+			<ViewHeight>2000</ViewHeight>
+			<Resolution>200</Resolution>
+			<Quality>98</Quality>
+			<ImageFormat>jpeg</ImageFormat>
+		</PageContent>
+	</PageContentList>
+</Content>
