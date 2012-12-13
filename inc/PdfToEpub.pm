@@ -625,6 +625,14 @@ EOD
 
 	# OPF
 	{
+		my $title_file_as;
+		if ($datatype eq 'magazine') {
+			$title_file_as = "$kana $sales_date";
+		}
+		else {
+			$title_file_as = $kana;
+		}
+		
 		open( $fp, "> $outdir/$opf" );
 		binmode $fp, ":utf8";
 		print $fp <<"EOD";
@@ -652,7 +660,7 @@ EOD
     <meta property="dcterms:modified">$modified</meta>
     <meta property="dcterms:issued">$issued</meta>
     <meta id="publication" property="prism:publicationName">$name</meta>
-    <meta refines="#title" property="file-as">$kana $sales_date</meta>
+    <meta refines="#title" property="file-as">$title_file_as</meta>
     <meta refines="#publisher" property="file-as">$publisher_kana</meta>
     <meta refines="#publication" property="file-as">$kana</meta>
     <meta property="prism:volume">$sales_yyyy</meta>
