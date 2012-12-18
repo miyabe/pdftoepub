@@ -717,16 +717,24 @@ EOD
 			$basename =~ /^META-INF\/.*$/ and return;
 			$basename =~ /^.*\.svg$/      and return;
 
+			my $is_image = 0;
 			++$i;
 			print $fp "    <item id=\"r$i\" href=\"$basename\" media-type=\"";
 			if (/^.*\.png$/) {
 				print $fp "image/png";
+				$is_image = 1;
 			}
 			elsif (/^.*\.gif$/) {
 				print $fp "image/gif";
+				$is_image = 1;
 			}
 			elsif (/^.*\.jpg$/) {
 				print $fp "image/jpeg";
+				$is_image = 1;
+			}
+			elsif (/^.*\.svg$/) {
+				print $fp "image/svg+xml";
+				$is_image = 1;
 			}
 			elsif (/^.*\.css$/) {
 				print $fp "text/css";
@@ -734,16 +742,30 @@ EOD
 			elsif (/^.*\.js$/) {
 				print $fp "text/javascript";
 			}
-			elsif (/^.*\.svg$/) {
-				print $fp "image/svg+xml";
-			}
 			elsif (/^.*\.html$/ || /^.*\.xhtml$/) {
 				print $fp "application/xhtml+xml";
 			}
 			elsif (/^.*\.otf$/) {
 				print $fp "font/otf";
 			}
-			print $fp "\"/>\n";
+			print $fp "\"";
+			# カバーページ
+			if ($is_image) {
+				if (!($basename =~ /^00000\..+$/)) {
+					if ($basename =~ /^00001\..+$/) {
+						if ( -f "$outdir/00000.png" || -f "$outdir/00000.gif" || -f "$outdir/00000.jpeg" || -f "$outdir/00000.svg" ) {
+							$is_image = 0;
+						}
+					}
+					else {
+						$is_image = 0;
+					}
+				}
+				if ($is_image) {
+					print $fp " properties=\"cover-image\"";
+				}
+			}
+			print $fp "/>\n";
 		}
 
 		#-- ディレクトリを指定(複数の指定可能) --#
