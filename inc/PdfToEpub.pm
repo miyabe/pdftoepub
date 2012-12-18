@@ -10,6 +10,7 @@ use XML::XPath;
 use Date::Format;
 use Image::Size;
 use HTML::Entities;
+use File::Spec;
 
 use EpubCheck;
 use EpubPackage;
@@ -753,7 +754,7 @@ EOD
 			if ($is_image) {
 				if (!($basename =~ /^00000\..+$/)) {
 					if ($basename =~ /^00001\..+$/) {
-						if ( -f "$outdir/00000.png" || -f "$outdir/00000.gif" || -f "$outdir/00000.jpeg" || -f "$outdir/00000.svg" ) {
+						if ( -f "00000.png" || -f "00000.gif" || -f "00000.jpg" || -f "00000.svg" ) {
 							$is_image = 0;
 						}
 					}
