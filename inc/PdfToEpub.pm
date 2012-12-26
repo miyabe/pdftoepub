@@ -136,6 +136,8 @@ sub transcode {
 	my $epub2      = 0;
 	# Kobo向け
 	my $kobo      = 0;
+	# 画像直接参照
+	our $imagespine = 0;
 	
 	for ( my $i = 0 ; $i < @ARGV ; ++$i ) {
 		if ( $ARGV[$i] eq '-view-height' ) {
@@ -159,6 +161,9 @@ sub transcode {
 		}
 		elsif ( $ARGV[$i] eq '-kobo' ) {
 			$kobo = 1;
+		}
+		elsif ( $ARGV[$i] eq '-imagespine' ) {
+			$imagespine = 1;
 		}
 	}
 
@@ -316,7 +321,10 @@ EOD
 			my $startPage =
 			  trim( $xp->findvalue( "StartPage/text()", $index )->value ) - 1;
 			my $file;
-			if ($epub2) {
+			if ($imagespine) {
+				$file = sprintf( "%05d.$imageSuffix", $startPage );
+			}
+			elsif ($epub2) {
 				$file = sprintf( "%05d.xhtml", $startPage );
 			}
 			else {
@@ -359,7 +367,13 @@ EOD
 				my $startPage =
 				  trim( $xp->findvalue( "StartPage/text()", $index )->value ) -
 				  1;
-				my $file = sprintf( "%05d.xhtml", $startPage );
+				my $file;
+				if ($imagespine) {
+					$file = sprintf( "%05d.$imageSuffix", $startPage );
+				}
+				else {
+					$file = sprintf( "%05d.xhtml", $startPage );
+				}
 				++$i;
 				print $fp <<"EOD";
 	<navPoint id="t$startPage" playOrder="$i">
@@ -512,13 +526,16 @@ EOD
 			elsif ( -f "$dir/cover.jpg" ) {
 				copy "$dir/cover.jpg", "$outdir/00000.jpg";
 			}
-			opendir $dh, "$outdir";
-			@files = sort grep { /^\d{5}\.[jp][pn]g$/ } readdir $dh;
-			closedir($dh);
-			foreach my $file (@files) {
-				my ($i) = ( $file =~ /^(\d+)\.[jp][pn]g$/ );
-				wrapimage( "$outdir/$file", "$outdir/$i.svg", $w, $h,
-					( $i % 2 == ( ( $ppd eq 'rtl' ) ? 0 : 1 ) ), $kobo );
+			if ($imagespine == 0) {
+				# SVGでくるむ
+				opendir $dh, "$outdir";
+				@files = sort grep { /^\d{5}\.[jp][pn]g$/ } readdir $dh;
+				closedir($dh);
+				foreach my $file (@files) {
+					my ($i) = ( $file =~ /^(\d+)\.[jp][pn]g$/ );
+					wrapimage( "$outdir/$file", "$outdir/$i.svg", $w, $h,
+						( $i % 2 == ( ( $ppd eq 'rtl' ) ? 0 : 1 ) ), $kobo );
+				}
 			}
 		}
 		else {
@@ -532,7 +549,7 @@ EOD
 				if ( -f "$dir/cover.jpg" ) {
 					copy "$dir/cover.jpg", "$outdir/00000.jpg";
 				}
-				if ( -f "$outdir/00000.jpg" ) {
+				if ( -f "$outdir/00000.jpg" && $imagespine == 0) {
 					my $dir;
 					opendir( $dir, $outdir );
 					my @files = sort grep { /^\d{5}\.svg$/ } readdir($dir);
@@ -587,16 +604,25 @@ s/src: url\(\"fonts\/font\-(\d+)\.svg\"\) format\(\"svg\"\);/src: url\(\"fonts\/
 	{
 		my $dir;
 		opendir( $dir, $outdir );
-		@files = sort grep { /^\d{5}\.svg$/ } readdir($dir);
+		if ($imagespine == 0) {
+			@files = sort grep { /^\d{5}\.svg$/ } readdir($dir);
+		}
+		else {
+			@files = sort grep { /^\d{5}\.[jp][pn]g$/ } readdir $dir;
+		}
 		closedir($dir);
 	}
 
 	# Check SVG viewBox.
 	my ( $width, $height );
 	{
-		my $xp = XML::XPath->new( filename => "$outdir/" . $files[0] );
-		my $viewBox = $xp->findvalue('/svg/@viewBox')->value;
-		( $width, $height ) = ( $viewBox =~ /^0 0 (\d+) (\d+)$/ );
+		if ($imagespine == 0) {
+			my $xp = XML::XPath->new( filename => "$outdir/" . $files[0] );
+			my $viewBox = $xp->findvalue('/svg/@viewBox')->value;
+			( $width, $height ) = ( $viewBox =~ /^0 0 (\d+) (\d+)$/ );
+		} else {
+			( $width, $height ) = imgsize( "$outdir/" . $files[0] );
+		}
 	}
 
 	# mimetype
@@ -716,8 +742,12 @@ EOD
 			$basename =~ /^toc\.ncx$/     and return;
 			$basename =~ /^.+\.epub$/     and return;
 			$basename =~ /^META-INF\/.*$/ and return;
-			$basename =~ /^.*\.svg$/      and return;
-
+			$basename =~ /^[^\/]*\.svg$/      and return;
+			if ($imagespine) {
+				$basename =~ /^[^\/]*\.png$/      and return;
+				$basename =~ /^[^\/]*\.jpg$/      and return;
+			}
+			
 			my $is_image = 0;
 			++$i;
 			print $fp "    <item id=\"r$i\" href=\"$basename\" media-type=\"";
@@ -796,25 +826,46 @@ EOD
 		$max =~ s/\..+$//;
 		while ( $i < $max ) {
 			++$i;
-			my $svgfile = sprintf( "$outdir/%05d.svg", $i );
-			if ( -f sprintf( "$outdir/%05d.svg", $i ) ) {
-				my $id = "t$i";
+			my $id = "t$i";
+			if ($imagespine) {
 				my $file;
-				if ($epub2) {
-					# EPUB3 Fixed Layout
-					wrapsvg($svgfile, sprintf( "$outdir/%05d.xhtml", $i, $name));
-					unlink $svgfile;
-					$file = sprintf( "%05d.xhtml", $i );
-					print $fp
-"    <item id=\"$id\" href=\"$file\" properties=\"svg\" media-type=\"application/xhtml+xml\"/>\n";
+				my $mime_type;
+				if (-f sprintf("$outdir/%05d.jpg", $i)) {
+					$file = sprintf( "%05d.jpg", $i );
+					$mime_type = "image/jpeg";
+				}
+				elsif (-f sprintf("$outdir/%05d.png", $i)) {
+					$file = sprintf( "%05d.png", $i );
+					$mime_type = "image/png";
 				}
 				else {
-					$file = sprintf( "%05d.svg", $i );
-					print $fp
-"    <item id=\"$id\" href=\"$file\" media-type=\"image/svg+xml\"/>\n";
+					next;
 				}
+				print $fp
+"    <item id=\"$id\" href=\"$file\" media-type=\"$mime_type\"/>\n";
 				push @items, [ $id, $file, $i ];
 				insert();
+			}
+			else {
+				my $svgfile = sprintf("$outdir/%05d.svg", $i);
+				if ( -f  $svgfile ) {
+					my $file;
+					if ($epub2) {
+						# EPUB3 Fixed Layout
+						wrapsvg($svgfile, sprintf( "$outdir/%05d.xhtml", $i, $name));
+						unlink $svgfile;
+						$file = sprintf( "%05d.xhtml", $i );
+						print $fp
+"    <item id=\"$id\" href=\"$file\" properties=\"svg\" media-type=\"application/xhtml+xml\"/>\n";
+					}
+					else {
+						$file = sprintf( "%05d.svg", $i );
+						print $fp
+"    <item id=\"$id\" href=\"$file\" media-type=\"image/svg+xml\"/>\n";
+					}
+					push @items, [ $id, $file, $i ];
+					insert();
+				}
 			}
 		}
 
