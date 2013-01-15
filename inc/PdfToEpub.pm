@@ -406,8 +406,11 @@ EOD
 			  trim( $xp->findvalue( "Quality/text()", $pageContent )->value );
 			my $fmt = trim(
 				$xp->findvalue( "ImageFormat/text()", $pageContent )->value );
-			if ($pageKbn == 3 || $pageKbn == 99) {
+			if ($pageKbn == 3) {
 				$blankPages{$pageNo} = 1;
+			}
+			elsif ($pageKbn == 99) {
+				$blankPages{$pageNo} = 2;
 			}
 			$pageToHeight{$pageNo} = $viewHeight;
 			$pageToDpi{$pageNo} = $Dpi;
@@ -475,7 +478,7 @@ EOD
 				closedir($dh);
 				foreach my $file (@files) {
 					my ($num) = ( $file =~ /^(\d{5})\.pdf$/ );
-					if ($blankPages{$num + 0}) {
+					if ($blankPages{$num + 0} == 2) {
 						next;
 					}
 					my ( $scale, $viewHeight, $qf, $suffix, $imageFormat ) =
@@ -487,17 +490,38 @@ EOD
 "$dir: $file を画像に変換する際にエラーが発生しました。\n";
 					}
 				}
+				if (-f "$dir/BlankImage/blank.pdf") {
+					# ブランクページがあれば、それを使う
+					foreach my $num ( keys( %blankPages ) ) {
+						my ( $scale, $viewHeight, $qf, $suffix, $imageFormat ) =
+						  imageOptions( $num );
+						if ($blankPages{$num} == 2 || -f "$outdir/$num.$suffix") {
+							next;
+						}
+						$num = sprintf("%05d", $num);
+						system
+"$pdftoppm -cropbox $imageFormat -jpegcompression q=$qf -aaVector $aaVector $scale $dir/BlankImage/blank.pdf > $outdir/$num.$suffix";
+					}
+				}
 			}
 			else {
 				# 単一のPDF
 				for ( my $i = 1 ; ; ++$i ) {
-					if ($blankPages{$i}) {
+					if ($blankPages{$i} == 2) {
 						next;
 					}
 					my ( $scale, $viewHeight, $qf, $suffix, $imageFormat ) =
 					  imageOptions($i);
-					system
+					if ($blankPages{$i} && -f "$dir/BlankImage/blank.pdf") {
+						# ブランクページがあれば、それを使う
+						my $num = sprintf("%05d", $i);
+						system
+"$pdftoppm -cropbox $imageFormat -jpegcompression q=$qf -aaVector $aaVector $scale $dir/BlankImage/blank.pdf > $outdir/$num.$suffix";
+					}
+					else {
+						system
 "$pdftoppm -f $i -l $i -cropbox $imageFormat -jpegcompression q=$qf -aaVector $aaVector $scale $pdfdir $outdir/";
+					}
 					if ($?) {
 						print STDERR
 "$dir: $pdfdir を画像に変換する際にエラーが発生しました。\n";
