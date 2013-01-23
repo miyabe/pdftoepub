@@ -138,6 +138,8 @@ sub transcode {
 	my $kobo      = 0;
 	# 画像直接参照
 	our $imagespine = 0;
+	# ブランクページの削除
+	my $skipBlankPage = 0;
 	
 	for ( my $i = 0 ; $i < @ARGV ; ++$i ) {
 		if ( $ARGV[$i] eq '-view-height' ) {
@@ -164,6 +166,9 @@ sub transcode {
 		}
 		elsif ( $ARGV[$i] eq '-imagespine' ) {
 			$imagespine = 1;
+		}
+		elsif ( $ARGV[$i] eq '-skipBlankPage' ) {
+			$skipBlankPage = 1;
 		}
 	}
 
@@ -478,6 +483,9 @@ EOD
 				closedir($dh);
 				foreach my $file (@files) {
 					my ($num) = ( $file =~ /^(\d{5})\.pdf$/ );
+					if ($skipBlankPage && $blankPages{$num + 0}) {
+						next;
+					}
 					if ($blankPages{$num + 0} == 2) {
 						next;
 					}
@@ -490,7 +498,7 @@ EOD
 "$dir: $file を画像に変換する際にエラーが発生しました。\n";
 					}
 				}
-				if (-f "$dir/BlankImage/blank.pdf") {
+				if (! $skipBlankPage && -f "$dir/BlankImage/blank.pdf") {
 					# ブランクページがあれば、それを使う
 					foreach my $num ( keys( %blankPages ) ) {
 						my ( $scale, $viewHeight, $qf, $suffix, $imageFormat ) =
@@ -507,6 +515,9 @@ EOD
 			else {
 				# 単一のPDF
 				for ( my $i = 1 ; ; ++$i ) {
+					if ($skipBlankPage && $blankPages{$i}) {
+						next;
+					}
 					if ($blankPages{$i} == 2) {
 						next;
 					}
