@@ -104,10 +104,6 @@ EPUBに挿し込むデータは挿し込みデータディレクトリ([ID]/ins)
 戻り値：単一ファイルを処理する場合　成功した場合 0 エラー発生時 -1
 ディレクトリを指定した場合は常に 0　が戻ります
 
-・generate-sample.pl ディレクトリ名 出力先
-サンプル画像、サムネイルを生成します
-ディレクトリ名の最後に / を付けると、さらにディレクトリ中にある複数のディレクトリを処理します。
-
 ・epub-package.pl ディレクトリ名
 ディレクトリをZIPにまとめてEPUBを生成します。
 
@@ -116,6 +112,11 @@ PDF中の画像を抽出してサイズを調べます。
 ディレクトリ名の最後に / を付けると、さらにディレクトリ中にある複数のディレクトリを処理します。
 抽出した画像は各ディレクトリのwork/imagesに出力されます。
 画像サイズは標準出力に出力されます。
+
+・epubtojson.php EPUBファイル 出力先ディレクトリ
+EPUBファイルから配信フォーマットを生成します。
+実行には、PHP, Imagemagickが必要です。
+Ubuntu/Debianでは php5-imagick パッケージをインストールして下さい。
 
 ■ patchesに含まれるパッチ
 epub-patch.pl EPUBファイル
@@ -238,8 +239,37 @@ compressionStringでJPEGの画質を指定できるようにした。文字列�
 ・Stream.cc
 1ビット画像のPredictor = 2の処理にバグがあったため修正。
 
+・Splash.cc
+pipeSetXYでバッファ外に描画しないように修正
+
 ■ ブックリスタ
 ちび見の生成
 pdftocairo -f [最初のページ] -l [最後のページ] -scale-to-x 198 -scale-to-y 285 -jpeg [PDF] [JPEGファイル]
 ちら見の生成
 pdftocairo -f [最初のページ] -l [最後のページ] -scale-to 480 -jpeg [PDF] [JPEGファイル]
+
+■ 使用するXMLタグ
+/Content/PublisherInfo/Name
+/Content/PublisherInfo/Kana
+/Content/MagazineInfo/Name
+/Content/MagazineInfo/Kana
+/Content/CoverDate
+/Content/SalesDate
+/Content/IntroduceScript
+/Content/SalesDate
+/Content/ContentInfo/PageOpenWay
+/Content/ContentInfo/Orientation
+/Content/DataType
+/Content/ContentInfo/IndexList/Index
+/Content/ContentInfo/IndexList/Index/Title
+/Content/ContentInfo/IndexList/Index/StartPage
+/Content/PageContentList/PageContent
+/Content/PageContentList/PageContent/PageNo
+/Content/PageContentList/PageContent/PageKbn
+/Content/PageContentList/PageContent/ViewHeight
+/Content/PageContentList/PageContent/Resolution
+/Content/PageContentList/PageContent/Quality
+/Content/PageContentList/PageContent/ImageFormat
+/Content/ContentInfo/PreviewPageList/PreviewPage
+/Content/ContentInfo/PreviewPageList/PreviewPage/StartPage
+/Content/ContentInfo/PreviewPageList/PreviewPage/EndPage
