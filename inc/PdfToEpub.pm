@@ -495,7 +495,7 @@ EOD
 "$pdftoppm -cropbox $imageFormat -jpegcompression q=$qf -aaVector $aaVector $scale $pdfdir/$file > $outdir/$num.$suffix";
 					if ($?) {
 						print STDERR
-"$dir: $file を画像に変換する際にエラーが発生しました。\n";
+"$dir: $file を画像に変換する際にエラーが発生しました。(1)\n";
 					}
 				}
 				if (! $skipBlankPage && -f "$dir/BlankImage/blank.pdf") {
@@ -535,7 +535,7 @@ EOD
 					}
 					if ($?) {
 						print STDERR
-"$dir: $pdfdir を画像に変換する際にエラーが発生しました。\n";
+"$dir: $pdfdir を画像に変換する際にエラーが発生しました。(2)\n";
 					}
 					( -f sprintf( "$outdir/%05d.$suffix", $i ) ) or last;
 				}
@@ -553,7 +553,7 @@ EOD
 "$pdftoppm -cropbox $imageFormat -jpegcompression q=$qf -aaVector $aaVector $scale $dir/cover.pdf > $outdir/00000.$suffix";
 				if ($?) {
 					print STDERR
-"$dir: cover.pdf を画像に変換する際にエラーが発生しました。\n";
+"$dir: cover.pdf を画像に変換する際にエラーが発生しました。(3)\n";
 					last;
 				}
 				( $w, $h ) = imgsize("$outdir/00000.$suffix");
