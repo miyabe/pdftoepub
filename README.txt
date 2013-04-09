@@ -117,10 +117,28 @@ PDF中の画像を抽出してサイズを調べます。
 サンプル画像、サムネイルを生成します
 ディレクトリ名の最後に / を付けると、さらにディレクトリ中にある複数のディレクトリを処理します。
 
-・epubtojson.php EPUBファイル 出力先ディレクトリ
+・epubtojson.php [-xml 書誌情報XMLファイル] EPUBファイル 出力先ディレクトリ
 EPUBファイルから配信フォーマットを生成します。
 実行には、PHP, Imagemagickが必要です。
 Ubuntu/Debianでは php5-imagick パッケージをインストールして下さい。
+
+meta.jsonのデータ
+ItemId -EPUBファイル名の XXXX_eEPUB3.epub の XXXX の部分
+ISBN -EPUBのopfのdc:identifier
+JDCN -EPUBのopfのdc:identifier
+BookId -EPUBのopfのdc:identifier
+ItemNamedc -EPUBのopfの:title
+PublisherName -EPUBのopfのdc:publisher
+Authors -EPUBのopfのdc:publisherおよびdc:creator
+PageNumber -EPUBのopfのopf:spine内のopf:itemrefの数
+SimplePageRange -書誌情報XMLのPreviewPage
+UpdateDateTime -JSON出力時の時刻
+TOC -EPUBのncxまたはnavファイル
+PageInfo -EPUBのopfのopf:meta(property属性が"rendition:spread"のもの)とopf:manifestおよびopf:spine内の情報。colorは画像の平均彩度から判定
+PageFlipDirection -EPUBのopfのopf:spineのpage-progression-direction属性
+
+thumbnail.jpgファイル -EPUBのカバーページまたは最初のページの縮小画像
+images -各ページの縮小画像
 
 ■ patchesに含まれるパッチ
 epub-patch.pl EPUBファイル

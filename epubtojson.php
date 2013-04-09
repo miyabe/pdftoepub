@@ -3,13 +3,30 @@
 require('php/util.inc.php');
 
 # コマンドライン
-if (count($argv) !== 3) {
-	echo "./epubtojson.php [入力EPUBファイル] [出力ディレクトリ]
-";
+$err = FALSE;
+for($i = 1; $i < count($argv); ++$i) {
+	if ($argv[$i] == '-xml') {
+		if (!isset($argv[++$i])) {
+			$err = TRUE;
+			break;
+		}
+		$xmlfile = $argv[$i];
+	}
+	else if (empty($file)) {
+		$file = $argv[$i];
+	}
+	else if (empty($outdir)) {
+		$outdir = $argv[$i];
+	}
+	else {
+		$err = TRUE;
+		break;
+	}
+}
+if ($err || empty($file) || empty($outdir)) {
+	echo "./epubtojson.php [-xml 書誌情報XML] 入力EPUBファイル 出力ディレクトリ\n";
 	exit;
 }
-$file = $argv[1];
-$outdir = $argv[2];
 
 # 出力先
 $imagedir = "$outdir/images/original";
@@ -23,6 +40,9 @@ $content_id = basename($file);
 if (preg_match('/^(.+)_eEPUB3\\.epub$/', $content_id, &$matches) === 1) {
 	$content_id = $matches[1];
 	$json['ItemId'] = $content_id;
+}
+else {
+	$content_id = '';
 }
 
 # OPF読み込み
@@ -44,19 +64,19 @@ $opf->registerXPathNamespace('dc', 'http://purl.org/dc/elements/1.1/');
 
 # ISBNがあれば取得する
 $isbn = $opf->xpath("/opf:package/opf:metadata/dc:identifier[@opf:scheme='ISBN']/text()");
-if (!empty($isbn[0])) {
+if (!empty($isbn)) {
 	$json['ISBN'] = (string)$isbn[0];
 }
 
 # JDCNがあれば取得する
 $jdcn = $opf->xpath("/opf:package/opf:metadata/dc:identifier[@opf:scheme='JDCN']/text()");
-if (!empty($jdcn[0])) {
+if (!empty($jdcn)) {
 	$json['JDCN'] = (string)$jdcn[0];
 }
 
 # BookIDがあれば取得する
 $bookid = $opf->xpath('/opf:package/@unique-identifier');
-if (!empty($bookid[0])) {
+if (!empty($bookid)) {
 	$bookid = (string)$bookid[0];
 	$bookid = $opf->xpath("/opf:package/opf:metadata/dc:identifier[@id='$bookid']/text()");
 	if (!empty($bookid[0])) {
@@ -66,24 +86,35 @@ if (!empty($bookid[0])) {
 
 # ItemName
 $title = $opf->xpath("/opf:package/opf:metadata/dc:title/text()");
-if (!empty($title[0])) {
+if (!empty($title)) {
 	$json['ItemName'] = (string)$title[0];
 }
 
 # PublisherName
+$authors = array();
 $publisher = $opf->xpath("/opf:package/opf:metadata/dc:publisher/text()");
-if (!empty($publisher[0])) {
-	$json['PublisherName'] = (string)$publisher[0];
+if (!empty($publisher)) {
+	$authors[] = $json['PublisherName'] = (string)$publisher[0];
 }
 
 # Author
 $creators = $opf->xpath("/opf:package/opf:metadata/dc:creator/text()");
 if (!empty($creators)) {
-	$authors = array();
 	foreach($creators as $creator) {
 		$authors[] = (string)$creator;
 	}
+}
+if (!empty($authors)) {
 	$json['Authors'] = $authors;
+}
+
+# spread
+$spread = $opf->xpath("/opf:package/opf:metadata/opf:meta[@property='rendition:spread']/text()");
+if (empty($spread)) {
+	$spread = 'true';
+}
+else {
+	$spread = ((string)$spread[0]) == 'none' ? 'false' : 'true';
 }
 
 # manifestの解析
@@ -161,16 +192,16 @@ foreach($itemrefs as $itemref) {
 	++$i;
 	$id = sprintf('%04d00', $i);
 	$href_to_id[$href] = $id;
-	$imagefile = "$imagedir/$id".$suffix;
+	$imagefile = "$imagedir/{$content_id}_{$id}".$suffix;
 	copy("zip://{$file}#{$base}{$image}", $imagefile);
 	
 	if ($cover_image === NULL) {
 		$cover_image = $image;
 	}
 	
-	#TODO spread
 	$info = array(
-			'id' => $id
+			'id' => $id,
+			'spread' => $spread,
 	);
 	
 	$imagefile = realpath($imagefile);
@@ -189,19 +220,29 @@ foreach($itemrefs as $itemref) {
 	$pageinfo[] = $info;
 }
 
-#TODO thumbnail.jpg
+# thumbnail.jpg
 if ($cover_image !== NULL) {
 	$im = new Imagick("zip://{$file}#{$base}{$cover_image}");
 	$im->setCompressionQuality(80);
 	$im->setImageFormat('jpeg');
-	$im->thumbnailImage(300, 300, TRUE);
+	$im->thumbnailImage(480, 480, TRUE);
 	$im->writeImage("$outdir/thumbnail.jpg");
 }
 
 # PageNumer
 $json['PageNumer'] = count($pageinfo);
 
-#TODO SamplePageRange
+# SamplePageRange
+if (!empty($xmlfile)) {
+	$xml = simplexml_load_file($xmlfile);
+	$previewpages = $xml->xpath('/Content/ContentInfo/PreviewPageList/PreviewPage');
+	if (!empty($previewpages)) {
+		$previewpage = $previewpages[0];
+		$startpage = $previewpage->xpath('StartPage/text()');
+		$endpage = $previewpage->xpath('EndPage/text()');
+		$json['SamplePageRange'] = $startpage[0].'-'.$endpage[0];
+	}
+}
 
 # UpdateDateTimeを現在時刻に設定
 $json['UpdateDateTime'] = date('Y-m-d\TH:i:s');
