@@ -233,14 +233,22 @@ if ($cover_image !== NULL) {
 $json['PageNumer'] = count($pageinfo);
 
 # SamplePageRange
+$max = -1;
 if (!empty($xmlfile)) {
 	$xml = simplexml_load_file($xmlfile);
 	$previewpages = $xml->xpath('/Content/ContentInfo/PreviewPageList/PreviewPage');
 	if (!empty($previewpages)) {
-		$previewpage = $previewpages[0];
-		$startpage = $previewpage->xpath('StartPage/text()');
-		$endpage = $previewpage->xpath('EndPage/text()');
-		$json['SamplePageRange'] = $startpage[0].'-'.$endpage[0];
+		foreach ($previewpages as $previewpage) {
+			$startpage = $previewpage->xpath('StartPage/text()');
+			$endpage = $previewpage->xpath('EndPage/text()');
+			$startpage = (int)$startpage[0];
+			$endpage = (int)$endpage[0];
+			$range = $endpage - $startpage;
+			if ($max < $range) {
+				$max = $range;
+				$json['SamplePageRange'] = $startpage.'-'.$endpage;
+			}
+		}
 	}
 }
 
