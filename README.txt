@@ -134,7 +134,7 @@ ItemNamedc -EPUBのopfの:title
 PublisherName -EPUBのopfのdc:publisher
 Authors -EPUBのopfのdc:publisherおよびdc:creator
 PageNumber -EPUBのopfのopf:spine内のopf:itemrefの数
-SimplePageRange -書誌情報XMLのPreviewPageで最も範囲が広いもの
+SamplePageRange -書誌情報XMLのPreviewPageで最も範囲が広いもの
 UpdateDateTime -JSON出力時の時刻
 TOC -EPUBのncxまたはnavファイル
 PageInfo -EPUBのopfのopf:meta(property属性が"rendition:spread"のもの)とopf:manifestおよびopf:spine内の情報。colorは画像の平均彩度から判定
