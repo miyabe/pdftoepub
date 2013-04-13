@@ -119,8 +119,11 @@ PDF中の画像を抽出してサイズを調べます。
 
 ・epubtojson.php [-xml 書誌情報XMLファイル] EPUBファイル 出力先ディレクトリ
 EPUBファイルから配信フォーマットを生成します。
-実行には、PHP, Imagemagickが必要です。
+
+実行には、PHP, Imagemagick. Archive_Tarが必要です。
 Ubuntu/Debianでは php5-imagick パッケージをインストールして下さい。
+また、以下のコマンドでPearからArchive_Tarをインストールしてください。
+sudo pear install Archive_Tar
 
 meta.jsonのデータ
 ItemId -EPUBファイル名の XXXX_eEPUB3.epub の XXXX の部分

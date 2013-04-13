@@ -1,6 +1,7 @@
 #!/usr/bin/php
 <?php
 require('php/util.inc.php');
+require('Archive/Tar.php');
 
 # コマンドライン
 $err = FALSE;
@@ -43,6 +44,12 @@ if (preg_match('/^(.+)_eEPUB3\\.epub$/', $content_id, &$matches) === 1) {
 }
 else {
 	$content_id = '';
+}
+
+# XML読み込み
+$xml = FALSE;
+if (!empty($xmlfile)) {
+	$xml = simplexml_load_file($xmlfile);
 }
 
 # OPF読み込み
@@ -108,15 +115,6 @@ if (!empty($authors)) {
 	$json['Authors'] = $authors;
 }
 
-# spread
-$spread = $opf->xpath("/opf:package/opf:metadata/opf:meta[@property='rendition:spread']/text()");
-if (empty($spread)) {
-	$spread = 'true';
-}
-else {
-	$spread = ((string)$spread[0]) == 'none' ? 'false' : 'true';
-}
-
 # manifestの解析
 $cover_image = NULL;
 $id_to_item = array();
@@ -138,7 +136,6 @@ foreach($items as $item) {
 $itemrefs = $opf->xpath("/opf:package/opf:spine/opf:itemref");
 $pageinfo = array();
 $href_to_id = array();
-$i = 0;
 foreach($itemrefs as $itemref) {
 	$idref = $itemref->xpath('@idref');
 	$idref = (string)$idref[0];
@@ -183,13 +180,15 @@ foreach($itemrefs as $itemref) {
 	else {
 		die("ページのMimeTypeが不正です:".$type);
 	}
-	if (preg_match('/^.+(\\..+)$/', $image, &$matches) === 1) {
-		$suffix = $matches[1];
+	$filename = basename($image);
+	if (preg_match('/^([0-9]+)(\\..+)$/', $filename, &$matches) === 1) {
+		$i = $matches[1] + 1;
+		$suffix = $matches[2];
 	}
 	else {
 		die("画像のファイル名が不正です:".$image);
 	}
-	++$i;
+	
 	$id = sprintf('%04d00', $i);
 	$href_to_id[$href] = $id;
 	$imagefile = "$imagedir/{$content_id}_{$id}".$suffix;
@@ -199,21 +198,35 @@ foreach($itemrefs as $itemref) {
 		$cover_image = $image;
 	}
 	
+	#PageInfo
 	$info = array(
 			'id' => $id,
-			'spread' => $spread,
 	);
 	
+	# カラー判定
 	$imagefile = realpath($imagefile);
 	$out = exec("convert $imagefile -colorspace HSB -channel g -separate +channel -format %[fx:mean] info:");
 	$info['color'] = $color = ($out > 0.02);
 	
+	# ページの左右
 	if (!empty($properties)) {
 		if (strpos($properties, 'page-spread-left') !== FALSE) {
 			$info['page-spread'] = 'left';
 		}
 		else if (strpos($properties, 'page-spread-right') !== FALSE) {
 			$info['page-spread'] = 'right';
+		}
+	}
+	
+	# ページのスキップ
+	if ($xml != FALSE) {
+		$n = $i - 1;
+		$pagekbn = $xml->xpath("/Content/PageContentList/PageContent[PageNo/text()='$n']/PageKbn");
+		if (!empty($pagekbn)) {
+			$pagekbn = $pagekbn[0];
+			if ($pagekbn == 3) {
+				$info['skppable'] = TRUE;
+			}
 		}
 	}
 	
@@ -229,24 +242,33 @@ if ($cover_image !== NULL) {
 	$im->writeImage("$outdir/thumbnail.jpg");
 }
 
-# PageNumer
-$json['PageNumer'] = count($pageinfo);
+# PageNumber
+$json['PageNumber'] = count($pageinfo);
 
 # SamplePageRange
 $max = -1;
-if (!empty($xmlfile)) {
-	$xml = simplexml_load_file($xmlfile);
+if ($xml != FALSE) {
 	$previewpages = $xml->xpath('/Content/ContentInfo/PreviewPageList/PreviewPage');
 	if (!empty($previewpages)) {
 		foreach ($previewpages as $previewpage) {
 			$startpage = $previewpage->xpath('StartPage/text()');
 			$endpage = $previewpage->xpath('EndPage/text()');
 			$startpage = (int)$startpage[0];
-			$endpage = (int)$endpage[0];
+			if (empty($endpage)) {
+				$endpage = $startpage;
+			}
+			else {
+				$endpage = (int)$endpage[0];
+			}
 			$range = $endpage - $startpage;
 			if ($max < $range) {
 				$max = $range;
-				$json['SamplePageRange'] = $startpage.'-'.$endpage;
+				if ($range == 1) {
+					$json['SamplePageRange'] = $startpage;
+				}
+				else {
+					$json['SamplePageRange'] = $startpage.'-'.$endpage;
+				}
 			}
 		}
 	}
@@ -300,5 +322,11 @@ if (!empty($ppd)) {
 	$json['PageFlipDirection'] = ($ppd == 'ltr') ? 'right' : 'left';
 }
 
+# JSON出力
 file_put_contents("$outdir/meta.json", json_xencode($json));
+
+# tar出力
+$tar = new Archive_Tar($outdir.'.blt');
+$tar->createModify($outdir, '', dirname($outdir));
+
 ?>
