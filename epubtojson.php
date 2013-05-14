@@ -115,6 +115,15 @@ if (!empty($authors)) {
 	$json['Authors'] = $authors;
 }
 
+# Resolution
+$datatype = $opf->xpath("/opf:package/opf:metadata/opf:meta[@property='prs:datatype']/text()");
+if (!empty($datatype)) {
+	if ($datatype[0] == 'magazine') {
+		$json['Resolution'] = 1600;
+	}
+}
+
+
 # manifestの解析
 $cover_image = NULL;
 $id_to_item = array();
@@ -198,7 +207,7 @@ foreach($itemrefs as $itemref) {
 		$cover_image = $image;
 	}
 	
-	#PageInfo
+	# PageInfo
 	$info = array(
 			'id' => $id,
 	);
@@ -320,6 +329,9 @@ $json['PageInfo'] = $pageinfo;
 $ppd = $opf->xpath("/opf:package/opf:spine/@page-progression-direction");
 if (!empty($ppd)) {
 	$json['PageFlipDirection'] = ($ppd == 'ltr') ? 'right' : 'left';
+}
+else {
+	$json['PageFlipDirection'] = 'left';
 }
 
 # JSON出力
