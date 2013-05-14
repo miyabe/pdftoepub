@@ -139,6 +139,7 @@ UpdateDateTime -JSON出力時の時刻
 TOC -EPUBのncxまたはnavファイル
 PageInfo -EPUBのopfのopf:meta(property属性が"rendition:spread"のもの)とopf:manifestおよびopf:spine内の情報。colorは画像の平均彩度から判定
 PageFlipDirection -EPUBのopfのopf:spineのpage-progression-direction属性
+Resolution -EPUBのopfのmeta(property属性が"prs:datatype"のもの)がmagazineの場合は1600。それ以外は省略
 
 thumbnail.jpgファイル -EPUBのカバーページまたは最初のページの縮小画像
 images -各ページの縮小画像
@@ -266,6 +267,9 @@ compressionStringでJPEGの画質を指定できるようにした。文字列�
 
 ・Splash.cc
 pipeSetXYでバッファ外に描画しないように修正
+
+・Annot.cc
+アノテーションの境界を描画しないように修正
 
 ■ ブックリスタ
 ちび見の生成
