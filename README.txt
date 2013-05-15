@@ -117,7 +117,7 @@ PDF中の画像を抽出してサイズを調べます。
 サンプル画像、サムネイルを生成します
 ディレクトリ名の最後に / を付けると、さらにディレクトリ中にある複数のディレクトリを処理します。
 
-・epubtojson.php [-xml 書誌情報XMLファイル] EPUBファイル 出力先ディレクトリ
+・epubtojson.php [-xml 書誌情報XMLファイル] [-resolution 解像度] EPUBファイル 出力先ディレクトリ
 EPUBファイルから配信フォーマットを生成します。
 
 実行には、PHP, Imagemagick. Archive_Tarが必要です。
@@ -139,7 +139,7 @@ UpdateDateTime -JSON出力時の時刻
 TOC -EPUBのncxまたはnavファイル
 PageInfo -EPUBのopfのopf:meta(property属性が"rendition:spread"のもの)とopf:manifestおよびopf:spine内の情報。colorは画像の平均彩度から判定
 PageFlipDirection -EPUBのopfのopf:spineのpage-progression-direction属性
-Resolution -EPUBのopfのmeta(property属性が"prs:datatype"のもの)がmagazineの場合は1600。それ以外は省略
+Resolution - -resolutionオプションの値。-resolutionオプションを省略した場合は1600。-resolutionオプションに0を指定した場合は出力しない。
 
 thumbnail.jpgファイル -EPUBのカバーページまたは最初のページの縮小画像
 images -各ページの縮小画像

@@ -5,6 +5,7 @@ require('Archive/Tar.php');
 
 # コマンドライン
 $err = FALSE;
+$resolution = 1600;
 for($i = 1; $i < count($argv); ++$i) {
 	if ($argv[$i] == '-xml') {
 		if (!isset($argv[++$i])) {
@@ -12,6 +13,13 @@ for($i = 1; $i < count($argv); ++$i) {
 			break;
 		}
 		$xmlfile = $argv[$i];
+	}
+	else if ($argv[$i] == '-resolution') {
+		if (!isset($argv[++$i])) {
+			$err = TRUE;
+			break;
+		}
+		$resolution = (int)$argv[$i];
 	}
 	else if (empty($file)) {
 		$file = $argv[$i];
@@ -116,13 +124,9 @@ if (!empty($authors)) {
 }
 
 # Resolution
-$datatype = $opf->xpath("/opf:package/opf:metadata/opf:meta[@property='prs:datatype']/text()");
-if (!empty($datatype)) {
-	if ($datatype[0] == 'magazine') {
-		$json['Resolution'] = 1600;
-	}
+if ($resolution) {
+	$json['Resolution'] = $resolution;
 }
-
 
 # manifestの解析
 $cover_image = NULL;
