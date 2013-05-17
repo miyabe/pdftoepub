@@ -140,6 +140,8 @@ sub transcode {
 	our $imagespine = 0;
 	# ブランクページの削除
 	my $skipBlankPage = 0;
+	# サンプルのみ変換
+	my $sample = 0;
 	
 	for ( my $i = 0 ; $i < @ARGV ; ++$i ) {
 		if ( $ARGV[$i] eq '-view-height' ) {
@@ -170,6 +172,9 @@ sub transcode {
 		elsif ( $ARGV[$i] eq '-skipBlankPage' ) {
 			$skipBlankPage = 1;
 		}
+		elsif ( $ARGV[$i] eq '-sample' ) {
+			$sample = 1;
+		}
 	}
 
 	my $dir        = $_[0];
@@ -189,6 +194,8 @@ sub transcode {
 	my $otf       = 0; # 1にするとOTFを出力する
 	my $raster    = 0;
 	our $fp;
+	my %samplePages = ();
+	my $maxSamplePage = 0;
 
 	if ( !-f $metafile ) {
 		print STDERR
@@ -298,6 +305,23 @@ sub transcode {
 		if ( !$datatype ) {
 			$datatype = 'magazine';
 		}
+	
+		# サンプルだけ出力
+		if ($sample) {
+			my $samples = $xp->find("/Content/ContentInfo/PreviewPageList/PreviewPage");
+			foreach my $node ($samples->get_nodelist) {
+				my ($xp2, $i, $startPage, $endPage);
+				$xp2 = XML::XPath->new(context => $node);
+				$startPage = trim($xp2->findvalue("StartPage/text()")->value);
+				$endPage = trim($xp2->findvalue("EndPage/text()")->value);
+				for ($i = $startPage; $i <= $endPage; ++$i) {
+					$samplePages{$i} = 1;
+				}
+				if ($endPage > $maxSamplePage) {
+					$maxSamplePage = $endPage;
+				}
+			}
+		}
 
 		# 目次
 		my $indexList = $xp->find("/Content/ContentInfo/IndexList/Index");
@@ -325,6 +349,9 @@ EOD
 			$title = encode_entities( $title, '<>&"' );
 			my $startPage =
 			  trim( $xp->findvalue( "StartPage/text()", $index )->value ) - 1;
+			if ($sample && !$samplePages{$startPage}) {
+				next;
+			}
 			my $file;
 			if ($imagespine) {
 				$file = sprintf( "%05d.$imageSuffix", $startPage );
@@ -372,6 +399,9 @@ EOD
 				my $startPage =
 				  trim( $xp->findvalue( "StartPage/text()", $index )->value ) -
 				  1;
+				if ($sample && !$samplePages{$startPage}) {
+					next;
+				}
 				my $file;
 				if ($imagespine) {
 					$file = sprintf( "%05d.$imageSuffix", $startPage );
@@ -483,12 +513,19 @@ EOD
 				closedir($dh);
 				foreach my $file (@files) {
 					my ($num) = ( $file =~ /^(\d{5})\.pdf$/ );
+					# ブランクページは飛ばす
 					if ($skipBlankPage && $blankPages{$num + 0}) {
 						next;
 					}
 					if ($blankPages{$num + 0} == 2) {
 						next;
 					}
+					
+					# サンプルページだけ出力する場合
+					if ($sample && !$samplePages{$num + 0}) {
+						next;
+					}
+					
 					my ( $scale, $viewHeight, $qf, $suffix, $imageFormat ) =
 					  imageOptions( $num + 0 );
 					system
@@ -515,12 +552,22 @@ EOD
 			else {
 				# 単一のPDF
 				for ( my $i = 1 ; ; ++$i ) {
+					# ブランクページは飛ばす
 					if ($skipBlankPage && $blankPages{$i}) {
 						next;
 					}
 					if ($blankPages{$i} == 2) {
 						next;
 					}
+					
+					# サンプルページだけ出力する場合
+					if ($sample && !$samplePages{$i}) {
+						if ($i >= $maxSamplePage) {
+							last;
+						}
+						next;
+					}
+					
 					my ( $scale, $viewHeight, $qf, $suffix, $imageFormat ) =
 					  imageOptions($i);
 					if ($blankPages{$i} && -f "$dir/BlankImage/blank.pdf") {
@@ -537,6 +584,7 @@ EOD
 						print STDERR
 "$dir: $pdfdir を画像に変換する際にエラーが発生しました。(2)\n";
 					}
+					
 					( -f sprintf( "$outdir/%05d.$suffix", $i ) ) or last;
 				}
 			}
@@ -576,6 +624,8 @@ EOD
 		else {
 			# SVGに変換
 			system "$pdftosvg $pdfdir $outdir" . ( $otf ? ' true' : '' );
+			
+			# ブランクページを消す
 			foreach my $i (keys(%blankPages)) {
 				unlink sprintf( "$outdir/%05d.svg", $i);
 			}

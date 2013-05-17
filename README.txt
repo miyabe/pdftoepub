@@ -75,7 +75,7 @@ PDFをSVGファイルに変換します。SVGファイルは１ページ目か�
 [ID]/m_[ID].xml -サンプル属性XML
 [ID]/ins -挿し込みデータ
 
-・pdftoepub.pl ディレクトリ名 出力先 [raster|svg] [-view-height ビュー高さ] [-aaVector yes|no] [-quality 画質] [-png] [-epub2] [-kobo] [-imagespine] [-skipBlankPage]
+・pdftoepub.pl ディレクトリ名 出力先 [raster|svg] [-view-height ビュー高さ] [-dpi 解像度] [-aaVector yes|no] [-quality 画質] [-png] [-epub2] [-kobo] [-imagespine] [-skipBlankPage] [-sample]
 PDFからEPUBを生成するPerlスクリプトです。
 ディレクトリ名の最後に / を付けると、さらにディレクトリ中にある複数のディレクトリを処理します。
 raster|svgのいずれかを指定すると、全体をラスター化したもの、SVGにしたもののいずれかを出力します。指定しない場合は両方を出力します。
@@ -85,6 +85,9 @@ EPUBに挿し込むデータは挿し込みデータディレクトリ([ID]/ins)
 -view-height, -aaVectorオプションはコマンドラインの最後に付けて下さい。
 
 -view-heightは、rasterで出力される画像の高さをピクセル数で指定します。デフォルトは2048です。
+
+-dpiは出力結果の解像度をdpi単位で指定します。
+-view-heightと-dpiの両方を指定すると、後のほうが優先されます
 
 -aaVectorは、rasterで出力されるときに、文字以外のオブジェクトをアンチエイリアスするかどうかを指定します。
 デフォルトはyesでアンチエイリアスをしますが、noを指定するとアンチエイリアスをしません。
@@ -100,6 +103,8 @@ EPUBに挿し込むデータは挿し込みデータディレクトリ([ID]/ins)
 -imagespineを付けると、各ページが画像になります。これはEPUBとしては不正なものになります。
 
 -skipBlankPageを付けると、XMLよりブランク（PageKbn=3または99）とされたページを飛ばします（出力しません）。
+
+-sampleを付けると、表紙とサンプルページだけ出力します。
 
 戻り値：単一ファイルを処理する場合　成功した場合 0 エラー発生時 -1
 ディレクトリを指定した場合は常に 0　が戻ります
