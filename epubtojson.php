@@ -203,8 +203,9 @@ foreach($itemrefs as $itemref) {
 	}
 	
 	$id = sprintf('%04d00', $i);
-	$href_to_id[$href] = $id;
-	$imagefile = "$imagedir/{$content_id}_{$id}".$suffix;
+	$imageid = "{$content_id}_{$id}";
+	$href_to_id[$href] = $imageid;
+	$imagefile = "$imagedir/{$imageid}".$suffix;
 	copy("zip://{$file}#{$base}{$image}", $imagefile);
 	
 	if ($cover_image === NULL) {
@@ -213,7 +214,7 @@ foreach($itemrefs as $itemref) {
 	
 	# PageInfo
 	$info = array(
-			'id' => $id,
+			'id' => $imageid,
 	);
 	
 	# カラー判定
@@ -332,7 +333,7 @@ $json['PageInfo'] = $pageinfo;
 # PageFlipDirection
 $ppd = $opf->xpath("/opf:package/opf:spine/@page-progression-direction");
 if (!empty($ppd)) {
-	$json['PageFlipDirection'] = ($ppd == 'ltr') ? 'right' : 'left';
+	$json['PageFlipDirection'] = ($ppd == 'ltr') ? 'left' : 'right';
 }
 else {
 	$json['PageFlipDirection'] = 'left';
