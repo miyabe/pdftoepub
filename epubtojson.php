@@ -233,17 +233,17 @@ foreach($itemrefs as $itemref) {
 	}
 	
 	# ページのスキップ
-	if ($xml != FALSE) {
+	if ($xml) {
 		$n = $i - 1;
-		$pagekbn = $xml->xpath("/Content/PageContentList/PageContent[PageNo/text()='$n']/PageKbn");
+		$pagekbn = $xml->xpath("/Content/PageContentList/PageContent[PageNo='$n']/PageKbn");
 		if (!empty($pagekbn)) {
-			$pagekbn = $pagekbn[0];
+			$pagekbn = (integer) $pagekbn[0];
 			if ($pagekbn == 3) {
-				$info['skppable'] = TRUE;
+				$info['skippable'] = TRUE;
 			}
 		}
 	}
-	
+		
 	$pageinfo[] = $info;
 }
 
@@ -261,7 +261,7 @@ $json['PageNumber'] = count($pageinfo);
 
 # SamplePageRange
 $max = -1;
-if ($xml != FALSE) {
+if ($xml) {
 	$previewpages = $xml->xpath('/Content/ContentInfo/PreviewPageList/PreviewPage');
 	if (!empty($previewpages)) {
 		foreach ($previewpages as $previewpage) {
@@ -345,5 +345,4 @@ file_put_contents("$outdir/meta.json", json_xencode($json));
 # tar出力
 $tar = new Archive_Tar($outdir.'.blt');
 $tar->createModify($outdir, '', dirname($outdir));
-
 ?>
