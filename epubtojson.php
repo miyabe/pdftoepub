@@ -267,12 +267,12 @@ if ($xml) {
 		foreach ($previewpages as $previewpage) {
 			$startpage = $previewpage->xpath('StartPage/text()');
 			$endpage = $previewpage->xpath('EndPage/text()');
-			$startpage = (int)$startpage[0];
+			$startpage = (int)$startpage[0] + 1;
 			if (empty($endpage)) {
 				$endpage = $startpage;
 			}
 			else {
-				$endpage = (int)$endpage[0];
+				$endpage = (int)$endpage[0] + 1;
 			}
 			$range = $endpage - $startpage;
 			if ($max < $range) {
