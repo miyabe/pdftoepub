@@ -145,7 +145,7 @@ sub transcode {
 	
 	for ( my $i = 0 ; $i < @ARGV ; ++$i ) {
 		if ( $ARGV[$i] eq '-view-height' ) {
-			$view_height = $ARGV[ ++$i ];
+			$view_height = $ARGV[ ++$i ] + 0;
 		}
 		elsif ( $ARGV[$i] eq '-dpi' ) {
 			$dpi = $ARGV[ ++$i ];

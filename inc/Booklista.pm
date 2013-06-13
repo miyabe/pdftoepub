@@ -38,6 +38,13 @@ sub generate {
 		return 0;
 	}
 	
+	my $thumbnail_height = 480;
+	for ( my $i = 0 ; $i < @ARGV ; ++$i ) {
+		if ( $ARGV[$i] eq '-thumbnail-height' ) {
+			$thumbnail_height = $ARGV[ ++$i ] + 0;
+		}
+	}
+		
 	mkdir $workdir;
 	mkdir $outdir;
 	mkdir $destdir;
@@ -127,7 +134,7 @@ sub generate {
 	}
 	
 	if (-f "$dir/cover.pdf") {
-		system "$pdftoppm -cropbox -l 1 -scale-to 480 -jpeg $dir/cover.pdf $workdir/cover";
+		system "$pdftoppm -cropbox -l 1 -scale-to $thumbnail_height -jpeg $dir/cover.pdf $workdir/cover";
 		if ($?) {
 			print STDERR "$dir: cover.pdf をJPEGに変換する際にエラーが発生しました。\n";
 		}
@@ -156,7 +163,8 @@ sub generate {
 		if (-f $file) {
 			my $image = Image::Magick->new;
 			$image->Read($file);
-			$image->Scale(geometry => "480x480");
+			my ($cw, $ch) = $image->Get('width', 'height');
+			$image->Scale(geometry => $thumbnail_height.'x'.$thumbnail_height);
 			$image->Write("$destdir/$contentsID.jpg");
 		}
 	}
