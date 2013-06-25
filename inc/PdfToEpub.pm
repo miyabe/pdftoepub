@@ -28,6 +28,13 @@ sub trim {
 	return $val;
 }
 
+# XMLテキストのエスケープ
+sub xmlescape {
+	my $val = shift;
+	$val = encode_entities($val, '<>&"\'');
+	return $val;
+}
+
 # 画像をSVGでくるむ
 sub wrapimage {
 	my ( $infile, $outfile, $w, $h, $left, $kobo ) = @_;
@@ -239,29 +246,29 @@ sub transcode {
 		$publisher =
 		  $xp->findvalue("/Content/PublisherInfo/Name/text()")->value;
 		if ($publisher) {
-			$publisher = trim( encode_entities( $publisher, '<>&"' ) );
+			$publisher = trim( xmlescape( $publisher ) );
 		}
 
 		$publisher_kana =
 		  $xp->findvalue("/Content/PublisherInfo/Kana/text()")->value;
 		if ($publisher_kana) {
 			$publisher_kana =
-			  trim( encode_entities( $publisher_kana, '<>&"' ) );
+			  trim( xmlescape( $publisher_kana ) );
 		}
 
 		$name = $xp->findvalue("/Content/MagazineInfo/Name/text()")->value;
 		if ($name) {
-			$name = trim( encode_entities( $name, '<>&"' ) );
+			$name = trim( xmlescape( $name ) );
 		}
 
 		$kana = $xp->findvalue("/Content/MagazineInfo/Kana/text()")->value;
 		if ($kana) {
-			$kana = trim( encode_entities( $kana, '<>&"' ) );
+			$kana = trim( xmlescape( $kana ) );
 		}
 
 		$cover_date = $xp->findvalue("/Content/CoverDate/text()")->value;
 		if ($cover_date) {
-			$cover_date = trim( encode_entities( $cover_date, '<>&"' ) );
+			$cover_date = trim( xmlescape( $cover_date ) );
 		}
 
 		$sales_date = $xp->findvalue("/Content/SalesDate/text()")->value;
@@ -272,12 +279,12 @@ sub transcode {
 
 		$introduce = $xp->findvalue("/Content/IntroduceScript/text()")->value;
 		if ($introduce) {
-			$introduce = trim( encode_entities( $introduce, '<>&"' ) );
+			$introduce = trim( xmlescape( $introduce ) );
 		}
 
 		$issued = $xp->findvalue("/Content/SalesDate/text()")->value;
 		if ($issued) {
-			$issued = trim( encode_entities( $issued, '<>&"' ) );
+			$issued = trim( xmlescape( $issued ) );
 		}
 
 		$ppd = trim(
@@ -346,7 +353,7 @@ sub transcode {
 EOD
 		foreach my $index ( $indexList->get_nodelist ) {
 			my $title = trim( $xp->findvalue( "Title/text()", $index )->value );
-			$title = encode_entities( $title, '<>&"' );
+			$title = xmlescape( $title );
 			my $startPage =
 			  trim( $xp->findvalue( "StartPage/text()", $index )->value ) - 1;
 			if ($sample && !$samplePages{$startPage}) {
@@ -395,7 +402,7 @@ EOD
 			foreach my $index ( $indexList->get_nodelist ) {
 				my $title =
 				  trim( $xp->findvalue( "Title/text()", $index )->value );
-				$title = encode_entities( $title, '<>&"' );
+				$title = xmlescape( $title );
 				my $startPage =
 				  trim( $xp->findvalue( "StartPage/text()", $index )->value ) -
 				  1;
@@ -750,9 +757,15 @@ EOD
 		print $fp <<"EOD";
 <?xml version="1.0" encoding="utf-8"?>
 <package xmlns="http://www.idpf.org/2007/opf"
-         prefix="layout: http://xmlns.sony.net/e-book/prs/layoutoptions/
-         prism: http://prismstandard.org/namespaces/basic/2.1
 EOD
+		print $fp <<"EOD";
+         prefix="prism: http://prismstandard.org/namespaces/basic/2.1
+EOD
+		if (!$epub2) {
+			print $fp <<"EOD";
+         layout: http://xmlns.sony.net/e-book/prs/layoutoptions/
+EOD
+		}
 		if ($epub2) {
 			# EPUB3 Fixed Layout
 			print $fp <<"EOD";
@@ -777,9 +790,15 @@ EOD
     <meta refines="#publication" property="file-as">$kana</meta>
     <meta property="prism:volume">$sales_yyyy</meta>
     <meta property="prism:number">${sales_mm}${sales_dd}</meta>
+EOD
+		if (!$epub2) {
+			print $fp <<"EOD";
     <meta property="layout:fixed-layout">true</meta>
     <meta property="layout:orientation">$orientation</meta>
     <meta property="layout:viewport">width=$width, height=$height</meta>
+EOD
+		}
+		print $fp <<"EOD";
     <meta property="prs:datatype">$datatype</meta>
 EOD
 		if ($epub2) {
@@ -795,10 +814,6 @@ EOD
   </metadata>
   <manifest>
 EOD
-
-		# <meta property="layout:overflow-scroll">true</meta>
-
-		# マニフェスト
 
 		# nav
 		print $fp
