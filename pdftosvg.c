@@ -12,7 +12,7 @@
 #include <cairo.h>
 #include <cairo-svg.h>
 
-#define CAIRO_PATCH
+//#define CAIRO_PATCH
 
 #define VIEW_HEIGHT 2068.0
 
