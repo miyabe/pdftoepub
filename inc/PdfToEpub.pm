@@ -37,7 +37,7 @@ sub xmlescape {
 
 # 画像をSVGでくるむ
 sub wrapimage {
-	my ( $infile, $outfile, $w, $h, $left, $kobo ) = @_;
+	my ( $infile, $outfile, $w, $h, $left, $kobo, @links ) = @_;
 	my ( $ww, $hh ) = imgsize($infile);
 
 	if ( $hh != $h ) {
@@ -74,8 +74,24 @@ sub wrapimage {
 <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
   width="100%" height="100%" viewBox="0 0 $w $h">
   <image x="$x" width="$ww" height="$hh" xlink:href="$file" />
+EOD
+	
+	for my $link (@links) {
+	my $lx = $$link[0] * $ww;
+	my $ly = $$link[1] * $hh;
+	my $lw = $$link[2] * $ww;
+	my $lh = $$link[3] * $hh;
+	my $href = xmlescape($$link[4]);
+	$lx += $x;
+print $fp <<"EOD";
+  <a xlink:href="$href" target="_blank"><rect x="$lx" y="$ly" width="$lw" height="$lh" stroke="transparent" fill="transparent"/></a>
+EOD
+	}
+
+	print $fp <<"EOD";
 </svg>
 EOD
+	
 	close($fp);
 }
 
@@ -126,6 +142,7 @@ sub transcode {
 	our $base     = dirname(__FILE__);
 	our $pdftoppm = "$base/../../poppler/utils/pdftoppm";
 	our $pdftosvg = "$base/../pdftosvg";
+	our $pdftomapping = "$base/../pdftomapping";
 	our $tootf = "$base/../tootf.pe";
 
 	# 画面の高さ
@@ -508,7 +525,10 @@ EOD
 	}
 
 	# PDFからSVGまたは画像に変換する
+			
 	{
+		my %mapping = (); # リンク
+		
 		if ($raster) {
 			# 画像に変換
 			my $dh;
@@ -532,6 +552,23 @@ EOD
 					if ($sample && !$samplePages{$num + 0}) {
 						next;
 					}
+					
+					# リンクの抽出
+					open(CMD, "$pdftomapping $pdfdir/$file |");
+					{
+						while (<CMD>) {
+						    if (/^PAGE: ([0-9]+)$/) {
+						    	if ($1 != 1) {
+						    		last;
+						    	}
+						    	@{$mapping{$num + 0}} = ();
+						    }
+						    elsif (/^LINK: ([\.0-9]+) ([\.0-9]+) ([\.0-9]+) ([\.0-9]+) URI: (.+)$/) {
+						    	push @{$mapping{$num + 0}}, [$1, $2, $3, $4, $5];
+						    }
+						}
+					}
+					close(CMD);
 					
 					my ( $scale, $viewHeight, $qf, $suffix, $imageFormat ) =
 					  imageOptions( $num + 0 );
@@ -558,6 +595,23 @@ EOD
 			}
 			else {
 				# 単一のPDF
+				
+				# リンクの抽出
+				open(CMD, "$pdftomapping $pdfdir |");
+				{
+					my $i = 0;
+					while (<CMD>) {
+					    if (/^PAGE: ([0-9]+)$/) {
+					    	$i = $1;
+					    	@{$mapping{$i}} = ();
+					    }
+					    elsif (/^LINK: ([\.0-9]+) ([\.0-9]+) ([\.0-9]+) ([\.0-9]+) URI: (.+)$/) {
+					    	push @{$mapping{$i}}, [$1, $2, $3, $4, $5];
+					    }
+					}
+				}
+				close(CMD);
+
 				for ( my $i = 1 ; ; ++$i ) {
 					# ブランクページは飛ばす
 					if ($skipBlankPage && $blankPages{$i}) {
@@ -595,6 +649,7 @@ EOD
 					( -f sprintf( "$outdir/%05d.$suffix", $i ) ) or last;
 				}
 			}
+	
 			opendir $dh, "$outdir";
 			my @files = sort grep { /^\d{5}\.[jp][pn]g$/ } readdir $dh;
 			closedir($dh);
@@ -624,7 +679,7 @@ EOD
 				foreach my $file (@files) {
 					my ($i) = ( $file =~ /^(\d+)\.[jp][pn]g$/ );
 					wrapimage( "$outdir/$file", "$outdir/$i.svg", $w, $h,
-						( $i % 2 == ( ( $ppd eq 'rtl' ) ? 0 : 1 ) ), $kobo );
+						( $i % 2 == ( ( $ppd eq 'rtl' ) ? 0 : 1 ) ), $kobo, @{$mapping{$i+0}} );
 				}
 			}
 		}
@@ -652,7 +707,7 @@ EOD
 					my ( $width, $height ) =
 					  ( $viewBox =~ /^0 0 (\d+) (\d+)$/ );
 					wrapimage( "$outdir/00000.jpg", "$outdir/00000.svg", $width,
-						$height, ( $ppd eq 'rtl' ), $kobo );
+						$height, ( $ppd eq 'rtl' ), $kobo, () );
 				}
 			}
 		}
