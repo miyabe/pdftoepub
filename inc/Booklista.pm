@@ -30,6 +30,7 @@ sub generate {
 	my $metafile2 = "$dir/m_$contentsID.xml";
 	my $workdir = "$dir/work";
 	our $outdir = "$workdir/sample";
+	our $epubdir = "$workdir/epub";
 	my $outfile = "$destdir/st_$contentsID.zip";
 	my $opf = $contentsID."_opf.opf";
 	
@@ -158,7 +159,13 @@ sub generate {
 			}
 		}
 		else {
-			$file = "$outdir/00001.jpg";
+			my $dh;
+			opendir($dh, $epubdir);
+			my @files = sort grep {/^[^\.].*\.jpg$/} readdir($dh);
+			closedir($dh);
+			if (@files) {
+				$file = "$epubdir/".$files[0];
+			}
 		}
 		if (-f $file) {
 			my $image = Image::Magick->new;
