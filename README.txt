@@ -46,7 +46,7 @@ make clean
 make
 
 # popplerをビルド
-# libfreetype6-dev, libglib2.0-dev, poppler-data, pango-graphite, libjpeg-devパッケージを入れておく必要があります。
+# libfreetype6-dev, libglib2.0-dev, poppler-data, pango-graphite, libjpeg-dev, liblcms2-devパッケージを入れておく必要があります。
 cd $POPPLER_DIR
 ./autogen.sh
 make clean

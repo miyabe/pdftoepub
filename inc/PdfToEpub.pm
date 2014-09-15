@@ -579,8 +579,7 @@ EOD
 "$dir: $file を画像に変換する際にエラーが発生しました。(1)\n";
 					}
 				}
-				if (! $skipBlankPage && -f "$dir/BlankImage/blank.pdf") {
-					# ブランクページがあれば、それを使う
+				if (! $skipBlankPage) {
 					foreach my $num ( keys( %blankPages ) ) {
 						my ( $scale, $viewHeight, $qf, $suffix, $imageFormat ) =
 						  imageOptions( $num );
@@ -588,8 +587,31 @@ EOD
 							next;
 						}
 						$num = sprintf("%05d", $num);
-						system
+						if (-f "$dir/BlankImage/blank.pdf") {
+							# ブランクページがあれば、それを使う
+							system
 "$pdftoppm -cropbox $imageFormat -jpegcompression q=$qf -aaVector $aaVector $scale $dir/BlankImage/blank.pdf > $outdir/$num.$suffix";
+						}
+						else {
+							# 直前のページから白紙ページを生成
+							my $outfile = "$outdir/$num.$suffix";
+							for (my $i = $num; $i >= 0; --$i) {
+								my $file = "$outdir/".sprintf("%05d", $i).'.'.$suffix;
+								if ( -f $file ) {
+									system "convert -colorize 100,100,100 -negate $file $outfile";
+									last;
+								}
+							}
+							if ( !( -f $outfile ) ) {
+								for (my $i = $num; $i < $num + 100; ++$i) {
+									my $file = "$outdir/".sprintf("%05d", $i).'.'.$suffix;
+									if ( -f $file ) {
+										system "convert -colorize 100,100,100 -negate $file $outfile";
+										last;
+									}
+								}
+							}
+						}
 					}
 				}
 			}
@@ -631,11 +653,18 @@ EOD
 					
 					my ( $scale, $viewHeight, $qf, $suffix, $imageFormat ) =
 					  imageOptions($i);
-					if ($blankPages{$i} && -f "$dir/BlankImage/blank.pdf") {
-						# ブランクページがあれば、それを使う
+					if ($blankPages{$i}) {
 						my $num = sprintf("%05d", $i);
-						system
+						if (-f "$dir/BlankImage/blank.pdf") {
+							# ブランクページがあれば、それを使う
+							system
 "$pdftoppm -cropbox $imageFormat -jpegcompression q=$qf -aaVector $aaVector $scale $dir/BlankImage/blank.pdf > $outdir/$num.$suffix";
+						}
+						else {
+						system
+"$pdftoppm -f $i -l $i -cropbox $imageFormat $scale $pdfdir $outdir/";
+						system "convert -colorize 100,100,100 -negate $outdir/$num.$suffix $outdir/$num.$suffix";
+						}
 					}
 					else {
 						system
