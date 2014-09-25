@@ -581,6 +581,9 @@ EOD
 				}
 				if (! $skipBlankPage) {
 					foreach my $num ( keys( %blankPages ) ) {
+						if ($sample && !$samplePages{$num}) {
+							next;
+						}
 						my ( $scale, $viewHeight, $qf, $suffix, $imageFormat ) =
 						  imageOptions( $num );
 						if ($blankPages{$num} == 2 || -f "$outdir/$num.$suffix") {
