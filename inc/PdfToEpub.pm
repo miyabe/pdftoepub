@@ -336,8 +336,8 @@ sub transcode {
 			foreach my $node ($samples->get_nodelist) {
 				my ($xp2, $i, $startPage, $endPage);
 				$xp2 = XML::XPath->new(context => $node);
-				$startPage = trim($xp2->findvalue("StartPage/text()")->value);
-				$endPage = trim($xp2->findvalue("EndPage/text()")->value);
+				$startPage = trim($xp2->findvalue("StartPage/text()")->value) - 1;
+				$endPage = trim($xp2->findvalue("EndPage/text()")->value) - 1;
 				for ($i = $startPage; $i <= $endPage; ++$i) {
 					$samplePages{$i} = 1;
 				}
