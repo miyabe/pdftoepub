@@ -34,6 +34,8 @@ sub generate {
 	my $outfile = "$destdir/st_$contentsID.zip";
 	my $opf = $contentsID."_opf.opf";
 	
+	our $previewPageOrigin = 1;
+	
 	if (! -f $metafile1) {
 		print "$dir: メタ情報XMLファイル ($contentsID.xml) がありません。\n";
 		return 0;
@@ -43,6 +45,11 @@ sub generate {
 	for ( my $i = 0 ; $i < @ARGV ; ++$i ) {
 		if ( $ARGV[$i] eq '-thumbnail-height' ) {
 			$thumbnail_height = $ARGV[ ++$i ] + 0;
+		}
+		elsif ( $ARGV[$i] eq '-previewPageOrigin' ) {
+			if ($ARGV[ ++$i ] eq '0') {
+				$previewPageOrigin = 0;
+			}
 		}
 	}
 		
@@ -104,16 +111,16 @@ sub generate {
 	$sampleType = "s";
 	foreach my $node ($samples->get_nodelist) {
 		$xp = XML::XPath->new(context => $node);
-		$startPage = trim($xp->findvalue("StartPage/text()")->value);
-		$endPage = trim($xp->findvalue("EndPage/text()")->value);
+		$startPage = trim($xp->findvalue("StartPage/text()")->value) - $previewPageOrigin;
+		$endPage = trim($xp->findvalue("EndPage/text()")->value) - $previewPageOrigin;
 		outputSample($dir, $contentsID, $sampleType, $startPage, $endPage);
 	}
 	if (-f $metafile2) {
 		$xp = XML::XPath->new(filename => $metafile2);
 		$sampleType = trim($xp->findvalue("/ContentsSample/SampleType/text()")->value);
 		if ($sampleType eq "s") {
-			$startPage = trim($xp->findvalue("/ContentsSample/StartPage/text()")->value);
-			$endPage = trim($xp->findvalue("/ContentsSample/EndPage/text()")->value);
+			$startPage = trim($xp->findvalue("/ContentsSample/StartPage/text()")->value) - $previewPageOrigin;
+			$endPage = trim($xp->findvalue("/ContentsSample/EndPage/text()")->value) - $previewPageOrigin;
 			outputSample($dir, $contentsID, $sampleType, $startPage, $endPage);
 		}
 	}

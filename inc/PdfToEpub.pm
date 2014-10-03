@@ -167,6 +167,8 @@ sub transcode {
 	# サンプルのみ変換
 	my $sample = 0;
 	
+	our $previewPageOrigin = 1;
+	
 	for ( my $i = 0 ; $i < @ARGV ; ++$i ) {
 		if ( $ARGV[$i] eq '-view-height' ) {
 			$view_height = $ARGV[ ++$i ] + 0;
@@ -198,6 +200,11 @@ sub transcode {
 		}
 		elsif ( $ARGV[$i] eq '-sample' ) {
 			$sample = 1;
+		}
+		elsif ( $ARGV[$i] eq '-previewPageOrigin' ) {
+			if ($ARGV[ ++$i ] eq '0') {
+				$previewPageOrigin = 0;
+			}
 		}
 	}
 
@@ -336,8 +343,8 @@ sub transcode {
 			foreach my $node ($samples->get_nodelist) {
 				my ($xp2, $i, $startPage, $endPage);
 				$xp2 = XML::XPath->new(context => $node);
-				$startPage = trim($xp2->findvalue("StartPage/text()")->value) - 1;
-				$endPage = trim($xp2->findvalue("EndPage/text()")->value) - 1;
+				$startPage = trim($xp2->findvalue("StartPage/text()")->value) - $previewPageOrigin;
+				$endPage = trim($xp2->findvalue("EndPage/text()")->value) - $previewPageOrigin;
 				for ($i = $startPage; $i <= $endPage; ++$i) {
 					$samplePages{$i} = 1;
 				}
