@@ -570,7 +570,7 @@ EOD
 						    	}
 						    	@{$mapping{$num + 0}} = ();
 						    }
-						    elsif (/^LINK: ([\.0-9]+) ([\.0-9]+) ([\.0-9]+) ([\.0-9]+) URI: (.+)$/) {
+						    elsif (/^LINK: ([\-\.0-9]+) ([\-\.0-9]+) ([\-\.0-9]+) ([\-\.0-9]+) URI: (.+)$/) {
 						    	push @{$mapping{$num + 0}}, [$1, $2, $3, $4, $5];
 						    }
 						}
@@ -637,7 +637,7 @@ EOD
 					    	$i = $1;
 					    	@{$mapping{$i}} = ();
 					    }
-					    elsif (/^LINK: ([\.0-9]+) ([\.0-9]+) ([\.0-9]+) ([\.0-9]+) URI: (.+)$/) {
+					    elsif (/^LINK: ([\-\.0-9]+) ([\-\.0-9]+) ([\-\.0-9]+) ([\-\.0-9]+) URI: (.+)$/) {
 					    	push @{$mapping{$i}}, [$1, $2, $3, $4, $5];
 					    }
 					}
@@ -706,6 +706,23 @@ EOD
 					last;
 				}
 				( $w, $h ) = imgsize("$outdir/00000.$suffix");
+				
+				# リンクの抽出
+				open(CMD, "$pdftomapping $dir/cover.pdf |");
+				{
+					while (<CMD>) {
+					    if (/^PAGE: ([0-9]+)$/) {
+					    	if ($1 != 1) {
+					    		last;
+					    	}
+					    	@{$mapping{0}} = ();
+					    }
+					    elsif (/^LINK: ([\-\.0-9]+) ([\-\.0-9]+) ([\-\.0-9]+) ([\-\.0-9]+) URI: (.+)$/) {
+					    	push @{$mapping{0}}, [$1, $2, $3, $4, $5];
+					    }
+					}
+				}
+				close(CMD);
 			}
 			elsif ( -f "$dir/cover.jpg" ) {
 				copy "$dir/cover.jpg", "$outdir/00000.jpg";
