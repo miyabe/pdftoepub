@@ -7,6 +7,7 @@ git clone git://anongit.freedesktop.org/git/pixman.git
 git clone git://github.com/miyabe/cairo.git
 git clone git://github.com/miyabe/poppler.git
 git clone git://github.com/miyabe/pdftoepub.git
+git clone git://git.sv.nongnu.org/freetype/freetype2.git
 
 # ビルドの準備のために、以下の環境変数を設定しておきます。
 
@@ -14,6 +15,7 @@ export PIXMAN_DIR=[PIXMANのディレクトリのパス]
 export CAIRO_DIR=[CAIROのディレクトリのパス]
 export POPPLER_DIR=[POPPLERのディレクトリのパス]
 export PDFTOEPUB_DIR=[PDFTOEPUBのディレクトリのパス]
+export FREETYPE_DIR=[FREETYPEのディレクトリのパス]
 
 # 例えばfooディレクトリにpixman, cairo, popplerを落とした場合は、fooディレクトリ内で以下を実行します。
 
@@ -21,6 +23,7 @@ export PIXMAN_DIR=`pwd`/pixman
 export CAIRO_DIR=`pwd`/cairo
 export POPPLER_DIR=`pwd`/poppler
 export PDFTOEPUB_DIR=`pwd`/pdftoepub
+export FREETYPE_DIR=`pwd`/freetype2
 
 # pkg-configのための環境変数を設定。
 
@@ -29,7 +32,13 @@ export PKG_CONFIG_TOP_BUILD_DIR=
 pkg-config --cflags cairo poppler-glib
 
 # 実行時のライブラリパスを設定。
-export LD_LIBRARY_PATH=$CAIRO_DIR/src/.libs:$PIXMAN_DIR/pixman/.libs:$POPPLER_DIR/glib/.libs
+export LD_LIBRARY_PATH=$CAIRO_DIR/src/.libs:$PIXMAN_DIR/pixman/.libs:$POPPLER_DIR/glib/.libs:$FREETYPE_DIR/objs/.libs
+
+# freetypeをビルド
+cd $FREETYPE_DIR
+./autogen.sh
+./configure
+make
 
 # pixmanをビルド
 cd $PIXMAN_DIR
