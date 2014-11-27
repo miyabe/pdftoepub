@@ -86,7 +86,7 @@ PDFをSVGファイルに変換します。SVGファイルは１ページ目か�
 [ID]/m_[ID].xml -サンプル属性XML
 [ID]/ins -挿し込みデータ
 
-・pdftoepub.pl ディレクトリ名 出力先 [raster|svg] [-view-height ビュー高さ] [-dpi 解像度] [-aaVector yes|no] [-quality 画質] [-png] [-epub2] [-kobo] [-imagespine] [-skipBlankPage] [-sample] [-thumbnail-height サムネイル高さ]
+・pdftoepub.pl ディレクトリ名 出力先 [raster|svg] [-view-height ビュー高さ] [-dpi 解像度] [-aaVector yes|no] [-quality 画質] [-png] [-epub2] [-kobo] [-imagespine] [-skipBlankPage] [-sample] [-no-initial-scale] [-thumbnail-height サムネイル高さ]
 PDFからEPUBを生成するPerlスクリプトです。
 ディレクトリ名の最後に / を付けると、さらにディレクトリ中にある複数のディレクトリを処理します。
 raster|svgのいずれかを指定すると、全体をラスター化したもの、SVGにしたもののいずれかを出力します。指定しない場合は両方を出力します。
@@ -118,6 +118,8 @@ EPUBに挿し込むデータは挿し込みデータディレクトリ([ID]/ins)
 BlankImage/blank.pdfがあれば、それをブランクページとして使います。それがない場合は直前のページを、さらにそれもない場合は直後のページを白塗したものをブランクページとします。
 
 -sampleを付けると、表紙とサンプルページだけ出力します。
+
+-no-initial-scaleを付けると、ビューポートにinitial-scaleを設定しません。
 
 -thumbnail-heightは、表紙サムネイルの高さをピクセル数で指定します。デフォルトは480です。
 

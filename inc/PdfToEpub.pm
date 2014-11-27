@@ -112,13 +112,22 @@ sub wrapsvg {
 	my $fp;
 	open( $fp, "> $outfile" );
 	binmode $fp, ":utf8";
+	
+	our $noInitialScale;
+	my $viewport;
+	if ($noInitialScale) {
+		$viewport = "width=$width, height=$height";
+	}
+	else {
+		$viewport = "width=$width, height=$height, initial-scale=1.0";
+	}
 	print $fp <<"EOD";
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE html>
 <html lang="ja-JP" xml:lang="ja-JP" xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=$width, height=$height, initial-scale=1.0" />
+    <meta name="viewport" content="$viewport" />
     <title>$name</title>
     <link rel="stylesheet" href="Stylesheet.css" type="text/css"/>
   </head>
@@ -166,6 +175,8 @@ sub transcode {
 	my $skipBlankPage = 0;
 	# サンプルのみ変換
 	my $sample = 0;
+	# initial-scaleを付けない
+	our $noInitialScale = 0;
 	
 	our $previewPageOrigin = 1;
 	
@@ -200,6 +211,9 @@ sub transcode {
 		}
 		elsif ( $ARGV[$i] eq '-sample' ) {
 			$sample = 1;
+		}
+		elsif ( $ARGV[$i] eq '-no-initial-scale' ) {
+			$noInitialScale = 1;
 		}
 		elsif ( $ARGV[$i] eq '-previewPageOrigin' ) {
 			if ($ARGV[ ++$i ] eq '0') {
@@ -693,9 +707,10 @@ EOD
 			my @files = sort grep { /^\d{5}\.[jp][pn]g$/ } readdir $dh;
 			closedir($dh);
 			( $w, $h ) = imgsize( "$outdir/" . $files[0] );
+			
+			my ( $scale, $viewHeight, $qf, $suffix, $imageFormat ) =
+			  imageOptions(0);
 			if ( -f "$dir/cover.pdf" ) {
-				my ( $scale, $viewHeight, $qf, $suffix, $imageFormat ) =
-				  imageOptions(0);
 
 				# カバー
 				system
@@ -725,7 +740,15 @@ EOD
 				close(CMD);
 			}
 			elsif ( -f "$dir/cover.jpg" ) {
-				copy "$dir/cover.jpg", "$outdir/00000.jpg";
+				my $image = Image::Magick->new;
+				$image->Read("$dir/cover.jpg");
+				if ($viewHeight > 0) {
+					$image->Scale(geometry => $viewHeight.'x'.$viewHeight);
+				}
+				else {
+					$image->Scale(geometry => '2068x2068');
+				}
+				$image->Write("$outdir/00000.jpg");
 			}
 			if ($imagespine == 0) {
 				# SVGでくるむ
