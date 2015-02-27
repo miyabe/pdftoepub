@@ -83,6 +83,15 @@ EOD
 	my $lh = $$link[3] * $hh;
 	my $href = xmlescape($$link[4]);
 	$lx += $x;
+	
+	our $forceint;
+	if ($forceint) {
+		$lx = int($lx + .5);
+		$ly = int($ly + .5);
+		$lw = int($lw + .5);
+		$lh = int($lh + .5);
+	}
+	
 print $fp <<"EOD";
   <a xlink:href="$href" target="_blank"><rect x="$lx" y="$ly" width="$lw" height="$lh" stroke="transparent" fill="transparent"/></a>
 EOD
@@ -177,6 +186,8 @@ sub transcode {
 	my $sample = 0;
 	# initial-scaleを付けない
 	our $noInitialScale = 0;
+	# SVG中で使う数値を整数にする
+	our $forceint = 0;
 	
 	our $previewPageOrigin = 1;
 	
@@ -214,6 +225,9 @@ sub transcode {
 		}
 		elsif ( $ARGV[$i] eq '-no-initial-scale' ) {
 			$noInitialScale = 1;
+		}
+		elsif ( $ARGV[$i] eq '-forceint' ) {
+			$forceint = 1;
 		}
 		elsif ( $ARGV[$i] eq '-previewPageOrigin' ) {
 			if ($ARGV[ ++$i ] eq '0') {
