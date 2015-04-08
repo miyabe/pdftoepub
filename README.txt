@@ -10,12 +10,9 @@ pear install Archive_Tar
 # 以下のコマンドでGitによりpixman, cairo, poppler, pdftoepubのソースを取得します。pixmanには手を加えていませんが、cairoをビルドするために必要です。
 
 git clone https://github.com/miyabe/poppler.git
-git clone https://github.com/miyabe/pdftoepub.git
 git clone git://git.sv.nongnu.org/freetype/freetype2.git
 git clone https://github.com/miyabe/mupdf.git
-
-wget http://www.mupdf.com/downloads/mupdf-1.6-source.tar.gz
-tar -xvzf mupdf-1.6-source.tar.gz
+git clone https://github.com/miyabe/pdftoepub.git
 
 # ビルドの準備のために、以下の環境変数を設定しておきます。
 
