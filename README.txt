@@ -1,5 +1,5 @@
 ﻿■ ビルド方法
-# Debian squeeze でビルド・動作を確認しています
+# Debian wheezy でビルド・動作を確認しています
 
 apt-get install git pkg-config automake libtool zlib1g-dev bzip2 libpng12-dev g++
 apt-get install libxext-dev libcurl4-openssl-dev imagemagick
@@ -7,7 +7,7 @@ apt-get install libfreetype6-dev libglib2.0-dev poppler-data pango-graphite libj
 apt-get install libxml2-dev libgtk2.0-dev libgtk2.0 libpoppler-glib-dev libossp-uuid-perl libarchive-zip-perl libxml-xpath-perl libimage-size-perl perlmagick php5-imagick php-pear openjdk-7-jre
 pear install Archive_Tar
 
-# 以下のコマンドでGitによりpixman, cairo, poppler, pdftoepubのソースを取得します。pixmanには手を加えていませんが、cairoをビルドするために必要です。
+# 以下のコマンドでGitによりpoppler, freetype2, mupdf, pdftoepubのソースを取得します。
 
 git clone https://github.com/miyabe/poppler.git
 git clone git://git.sv.nongnu.org/freetype/freetype2.git
