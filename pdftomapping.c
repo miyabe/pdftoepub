@@ -52,6 +52,7 @@ int main(int argc, char *argv[]) {
     }
 
     pdf_file = argv[1];
+    g_type_init ();
     error = NULL;
 
 	if (g_path_is_absolute(pdf_file)) {

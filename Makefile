@@ -3,6 +3,8 @@ LIBS = -lpoppler-glib -pthread -lgdk-x11-2.0 -lgdk_pixbuf-2.0 -lm -lpango-1.0 -l
 
 all: pdftomapping
 
+clean:
+	rm pdftomapping
+
 pdftomapping: pdftomapping.c
 	gcc -o pdftomapping pdftomapping.c $(CFLAGS) $(LIBS)
-	
