@@ -203,11 +203,12 @@ pipeSetXYでバッファ外に描画しないように修正
 ・Annot.cc
 アノテーションの境界を描画しないように修正
 
-■ ブックリスタ
-ちび見の生成
-pdftocairo -f [最初のページ] -l [最後のページ] -scale-to-x 198 -scale-to-y 285 -jpeg [PDF] [JPEGファイル]
-ちら見の生成
-pdftocairo -f [最初のページ] -l [最後のページ] -scale-to 480 -jpeg [PDF] [JPEGファイル]
+■ mupdfの修正内容
+・mudraw.c
+指定したページの範囲外のページを描画しないように修正。
+
+・font.c
+日本語のフォント数が多いファイルを扱えるようにMAX_BBOX_TABLE_SIZEを4096から65536に拡大。
 
 ■ 使用するXMLタグ
 /Content/PublisherInfo/Name
