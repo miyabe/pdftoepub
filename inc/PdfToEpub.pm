@@ -15,18 +15,13 @@ use File::Spec;
 use EpubCheck;
 use EpubPackage;
 
+use Utils;
+
 require Exporter;
 @ISA = qw(Exporter);
 
 use utf8;
 use strict;
-
-# テキストのトリム
-sub trim {
-	my $val = shift;
-	$val =~ s/^\s*(.*?)\s*$/$1/;
-	return $val;
-}
 
 # XMLテキストのエスケープ
 sub xmlescape {
@@ -158,10 +153,7 @@ EOD
 
 sub transcode {
 	our $base     = dirname(__FILE__);
-	our $pdftoppm = "$base/../../poppler/utils/pdftoppm";
-	our $pdftosvg = "$base/../pdftosvg";
 	our $pdftomapping = "$base/../pdftomapping";
-	our $tootf = "$base/../tootf.pe";
 
 	# 画面の高さ
 	our $view_height = 2068;
@@ -250,7 +242,6 @@ sub transcode {
 	our $outdir    = "$workdir/epub";
 	my $outfile   = "$workdir/$contentsID" . "_eEPUB3.epub";
 	my $opf       = $contentsID . "_opf.opf";
-	my $otf       = 0; # 1にするとOTFを出力する
 	my $raster    = 0;
 	our $fp;
 	my %samplePages = ();
@@ -298,29 +289,29 @@ sub transcode {
 		$publisher =
 		  $xp->findvalue("/Content/PublisherInfo/Name/text()")->value;
 		if ($publisher) {
-			$publisher = trim( xmlescape( $publisher ) );
+			$publisher = Utils::trim( xmlescape( $publisher ) );
 		}
 
 		$publisher_kana =
 		  $xp->findvalue("/Content/PublisherInfo/Kana/text()")->value;
 		if ($publisher_kana) {
 			$publisher_kana =
-			  trim( xmlescape( $publisher_kana ) );
+			  Utils::trim( xmlescape( $publisher_kana ) );
 		}
 
 		$name = $xp->findvalue("/Content/MagazineInfo/Name/text()")->value;
 		if ($name) {
-			$name = trim( xmlescape( $name ) );
+			$name = Utils::trim( xmlescape( $name ) );
 		}
 
 		$kana = $xp->findvalue("/Content/MagazineInfo/Kana/text()")->value;
 		if ($kana) {
-			$kana = trim( xmlescape( $kana ) );
+			$kana = Utils::trim( xmlescape( $kana ) );
 		}
 
 		$cover_date = $xp->findvalue("/Content/CoverDate/text()")->value;
 		if ($cover_date) {
-			$cover_date = trim( xmlescape( $cover_date ) );
+			$cover_date = Utils::trim( xmlescape( $cover_date ) );
 		}
 
 		$sales_date = $xp->findvalue("/Content/SalesDate/text()")->value;
@@ -331,19 +322,19 @@ sub transcode {
 
 		$introduce = $xp->findvalue("/Content/IntroduceScript/text()")->value;
 		if ($introduce) {
-			$introduce = trim( xmlescape( $introduce ) );
+			$introduce = Utils::trim( xmlescape( $introduce ) );
 		}
 
 		$issued = $xp->findvalue("/Content/SalesDate/text()")->value;
 		if ($issued) {
-			$issued = trim( xmlescape( $issued ) );
+			$issued = Utils::trim( xmlescape( $issued ) );
 		}
 
-		$ppd = trim(
+		$ppd = Utils::trim(
 			$xp->findvalue("/Content/ContentInfo/PageOpenWay/text()")->value ) + 0;
 		$ppd = ( $ppd == 1 ) ? 'ltr' : 'rtl';
 
-		$orientation = trim(
+		$orientation = Utils::trim(
 			$xp->findvalue("/Content/ContentInfo/Orientation/text()")->value );
 		if ( !$orientation ) {
 			$orientation = 'auto';
@@ -360,7 +351,7 @@ sub transcode {
 
 		$modified = time2str( "%Y-%m-%dT%H:%M:%SZ", time, "GMT" );
 
-		$datatype = trim( $xp->findvalue("/Content/DataType/text()")->value );
+		$datatype = Utils::trim( $xp->findvalue("/Content/DataType/text()")->value );
 		if ( !$datatype ) {
 			$datatype = 'magazine';
 		}
@@ -371,8 +362,8 @@ sub transcode {
 			foreach my $node ($samples->get_nodelist) {
 				my ($xp2, $i, $startPage, $endPage);
 				$xp2 = XML::XPath->new(context => $node);
-				$startPage = trim($xp2->findvalue("StartPage/text()")->value) - $previewPageOrigin;
-				$endPage = trim($xp2->findvalue("EndPage/text()")->value) - $previewPageOrigin;
+				$startPage = Utils::trim($xp2->findvalue("StartPage/text()")->value) - $previewPageOrigin;
+				$endPage = Utils::trim($xp2->findvalue("EndPage/text()")->value) - $previewPageOrigin;
 				for ($i = $startPage; $i <= $endPage; ++$i) {
 					$samplePages{$i} = 1;
 				}
@@ -404,10 +395,10 @@ sub transcode {
     <ol>
 EOD
 		foreach my $index ( $indexList->get_nodelist ) {
-			my $title = trim( $xp->findvalue( "Title/text()", $index )->value );
+			my $title = Utils::trim( $xp->findvalue( "Title/text()", $index )->value );
 			$title = xmlescape( $title );
 			my $startPage =
-			  trim( $xp->findvalue( "StartPage/text()", $index )->value ) - 1;
+			  Utils::trim( $xp->findvalue( "StartPage/text()", $index )->value ) - 1;
 			if ($sample && !$samplePages{$startPage}) {
 				next;
 			}
@@ -453,10 +444,10 @@ EOD
 			my $i = 0;
 			foreach my $index ( $indexList->get_nodelist ) {
 				my $title =
-				  trim( $xp->findvalue( "Title/text()", $index )->value );
+				  Utils::trim( $xp->findvalue( "Title/text()", $index )->value );
 				$title = xmlescape( $title );
 				my $startPage =
-				  trim( $xp->findvalue( "StartPage/text()", $index )->value ) -
+				  Utils::trim( $xp->findvalue( "StartPage/text()", $index )->value ) -
 				  1;
 				if ($sample && !$samplePages{$startPage}) {
 					next;
@@ -488,17 +479,17 @@ EOD
 		my $pageContentList = $xp->find("/Content/PageContentList/PageContent");
 		foreach my $pageContent ( $pageContentList->get_nodelist ) {
 			my $pageNo =
-			  trim( $xp->findvalue( "PageNo/text()", $pageContent )->value ) +
+			  Utils::trim( $xp->findvalue( "PageNo/text()", $pageContent )->value ) +
 			  0;
-			my $pageKbn = trim(
+			my $pageKbn = Utils::trim(
 				$xp->findvalue( "PageKbn/text()", $pageContent )->value ) + 0;
-			my $viewHeight = trim(
+			my $viewHeight = Utils::trim(
 				$xp->findvalue( "ViewHeight/text()", $pageContent )->value );
-			my $Dpi = trim(
+			my $Dpi = Utils::trim(
 				$xp->findvalue( "Resolution/text()", $pageContent )->value );
 			my $qf =
-			  trim( $xp->findvalue( "Quality/text()", $pageContent )->value );
-			my $fmt = trim(
+			  Utils::trim( $xp->findvalue( "Quality/text()", $pageContent )->value );
+			my $fmt = Utils::trim(
 				$xp->findvalue( "ImageFormat/text()", $pageContent )->value );
 			if ($pageKbn == 3) {
 				$blankPages{$pageNo} = 1;
@@ -517,322 +508,248 @@ EOD
 
 	sub imageOptions {
 		my ($page) = @_;
-		my $scale;
+		my %opts = {};
 		my $viewHeight = $pageToHeight{$page};
 		if ( !$viewHeight && !$pageToDpi{$page}) {
 			$viewHeight = $view_height;
 		}
 		if ( !$viewHeight ) {
 			$viewHeight = $pageToDpi{$page};
-			$scale = "-r $viewHeight";
+			$opts{r} = $viewHeight;
 		}
 		else {
 			if ( $viewHeight == -1 ) {
-				$scale = "-r $dpi";
+				$opts{r} = $dpi;
 			}
 			else {
-				$scale = "-scale-to-y $viewHeight -scale-to-x -1";
+				$opts{h} = $viewHeight;
 			}
 		}
-		my $qf;
 		if ( $pageToQuality{$page} ) {
-			$qf = $pageToQuality{$page};
+			$opts{qf} = $pageToQuality{$page};
 		}
 		else {
-			$qf = $default_qf;
+			$opts{qf} = $default_qf;
 		}
 		my $suffix;
-		my $imageFormat;
 		if ( $pageToFormat{$page} ) {
 			$suffix = $pageToFormat{$page};
+			if ($suffix eq 'jpeg') {
+				$suffix = 'jpg';
+			}
 		}
 		else {
 			$suffix = $imageSuffix;
 		}
-		if ( $suffix eq 'png' ) {
-			$imageFormat = '-png';
-		}
-		else {
-			$suffix = 'jpg';
-			$imageFormat = '-jpeg';
-		}
-		return ( $scale, $viewHeight, $qf, $suffix, $imageFormat );
+		$opts{suffix} = $suffix;
+		$opts{aaVector} = $aaVector;
+		return ($viewHeight, $suffix, \%opts);
 	}
 
-	# PDFからSVGまたは画像に変換する
+	# PDFから画像に変換する
 			
 	{
 		my %mapping = (); # リンク
 		
-		if ($raster) {
-			# 画像に変換
-			my $dh;
-			my ( $w, $h );
-			if ( -d $pdfdir ) {
-				# ページ分割されたPDF
-				opendir $dh, "$pdfdir";
-				my @files = grep { /^\d{5}\.pdf$/ } readdir $dh;
-				closedir($dh);
-				foreach my $file (@files) {
-					my ($num) = ( $file =~ /^(\d{5})\.pdf$/ );
-					# ブランクページは飛ばす
-					if ($skipBlankPage && $blankPages{$num + 0}) {
-						next;
-					}
-					if ($blankPages{$num + 0} == 2) {
-						next;
-					}
-					
-					# サンプルページだけ出力する場合
-					if ($sample && !$samplePages{$num + 0}) {
-						next;
-					}
-					
-					# リンクの抽出
-					open(CMD, "$pdftomapping $pdfdir/$file |");
-					{
-						while (<CMD>) {
-						    if (/^PAGE: ([0-9]+)$/) {
-						    	if ($1 != 1) {
-						    		last;
-						    	}
-						    	@{$mapping{$num + 0}} = ();
-						    }
-						    elsif (/^LINK: ([\-\.0-9]+) ([\-\.0-9]+) ([\-\.0-9]+) ([\-\.0-9]+) URI: (.+)$/) {
-						    	push @{$mapping{$num + 0}}, [$1, $2, $3, $4, $5];
-						    }
-						}
-					}
-					close(CMD);
-					
-					my ( $scale, $viewHeight, $qf, $suffix, $imageFormat ) =
-					  imageOptions( $num + 0 );
-					system
-"$pdftoppm -cropbox $imageFormat -jpegcompression q=$qf -aaVector $aaVector $scale $pdfdir/$file > $outdir/$num.$suffix";
-					if ($?) {
-						print STDERR
-"$dir: $file を画像に変換する際にエラーが発生しました。(1)\n";
-					}
-				}
-				if (! $skipBlankPage) {
-					foreach my $num ( keys( %blankPages ) ) {
-						if ($sample && !$samplePages{$num}) {
-							next;
-						}
-						my ( $scale, $viewHeight, $qf, $suffix, $imageFormat ) =
-						  imageOptions( $num );
-						if ($blankPages{$num} == 2 || -f "$outdir/$num.$suffix") {
-							next;
-						}
-						$num = sprintf("%05d", $num);
-						if (-f "$dir/BlankImage/blank.pdf") {
-							# ブランクページがあれば、それを使う
-							system
-"$pdftoppm -cropbox $imageFormat -jpegcompression q=$qf -aaVector $aaVector $scale $dir/BlankImage/blank.pdf > $outdir/$num.$suffix";
-						}
-						else {
-							# 直前のページから白紙ページを生成
-							my $outfile = "$outdir/$num.$suffix";
-							for (my $i = $num; $i >= 0; --$i) {
-								my $file = "$outdir/".sprintf("%05d", $i).'.'.$suffix;
-								if ( -f $file ) {
-									system "convert -colorize 100,100,100 -negate $file $outfile";
-									last;
-								}
-							}
-							if ( !( -f $outfile ) ) {
-								for (my $i = $num; $i < $num + 100; ++$i) {
-									my $file = "$outdir/".sprintf("%05d", $i).'.'.$suffix;
-									if ( -f $file ) {
-										system "convert -colorize 100,100,100 -negate $file $outfile";
-										last;
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-			else {
-				# 単一のPDF
-				
-				# リンクの抽出
-				open(CMD, "$pdftomapping $pdfdir |");
-				{
-					my $i = 0;
-					while (<CMD>) {
-					    if (/^PAGE: ([0-9]+)$/) {
-					    	$i = $1;
-					    	@{$mapping{$i}} = ();
-					    }
-					    elsif (/^LINK: ([\-\.0-9]+) ([\-\.0-9]+) ([\-\.0-9]+) ([\-\.0-9]+) URI: (.+)$/) {
-					    	push @{$mapping{$i}}, [$1, $2, $3, $4, $5];
-					    }
-					}
-				}
-				close(CMD);
-
-				for ( my $i = 1 ; ; ++$i ) {
-					# ブランクページは飛ばす
-					if ($skipBlankPage && $blankPages{$i}) {
-						next;
-					}
-					if ($blankPages{$i} == 2) {
-						next;
-					}
-					
-					# サンプルページだけ出力する場合
-					if ($sample && !$samplePages{$i}) {
-						if ($i >= $maxSamplePage) {
-							last;
-						}
-						next;
-					}
-					
-					my ( $scale, $viewHeight, $qf, $suffix, $imageFormat ) =
-					  imageOptions($i);
-					if ($blankPages{$i}) {
-						my $num = sprintf("%05d", $i);
-						if (-f "$dir/BlankImage/blank.pdf") {
-							# ブランクページがあれば、それを使う
-							system
-"$pdftoppm -cropbox $imageFormat -jpegcompression q=$qf -aaVector $aaVector $scale $dir/BlankImage/blank.pdf > $outdir/$num.$suffix";
-						}
-						else {
-						system
-"$pdftoppm -f $i -l $i -cropbox $imageFormat $scale $pdfdir $outdir/";
-						system "convert -colorize 100,100,100 -negate $outdir/$num.$suffix $outdir/$num.$suffix";
-						}
-					}
-					else {
-						system
-"$pdftoppm -f $i -l $i -cropbox $imageFormat -jpegcompression q=$qf -aaVector $aaVector $scale $pdfdir $outdir/";
-					}
-					if ($?) {
-						print STDERR
-"$dir: $pdfdir を画像に変換する際にエラーが発生しました。(2)\n";
-					}
-					
-					( -f sprintf( "$outdir/%05d.$suffix", $i ) ) or last;
-				}
-			}
-	
-			opendir $dh, "$outdir";
-			my @files = sort grep { /^\d{5}\.[jp][pn]g$/ } readdir $dh;
+		# 画像に変換
+		my $dh;
+		my ( $w, $h );
+		if ( -d $pdfdir ) {
+			# ページ分割されたPDF
+			opendir $dh, "$pdfdir";
+			my @files = grep { /^\d{5}\.pdf$/ } readdir $dh;
 			closedir($dh);
-			( $w, $h ) = imgsize( "$outdir/" . $files[0] );
-			
-			my ( $scale, $viewHeight, $qf, $suffix, $imageFormat ) =
-			  imageOptions(0);
-			if ( -f "$dir/cover.pdf" ) {
-
-				# カバー
-				system
-"$pdftoppm -cropbox $imageFormat -jpegcompression q=$qf -aaVector $aaVector $scale $dir/cover.pdf > $outdir/00000.$suffix";
-				if ($?) {
-					print STDERR
-"$dir: cover.pdf を画像に変換する際にエラーが発生しました。(3)\n";
-					last;
+			foreach my $file (@files) {
+				my ($num) = ( $file =~ /^(\d{5})\.pdf$/ );
+				# ブランクページは飛ばす
+				if ($skipBlankPage && $blankPages{$num + 0}) {
+					next;
 				}
-				( $w, $h ) = imgsize("$outdir/00000.$suffix");
+				if ($blankPages{$num + 0} == 2) {
+					next;
+				}
+				
+				# サンプルページだけ出力する場合
+				if ($sample && !$samplePages{$num + 0}) {
+					next;
+				}
 				
 				# リンクの抽出
-				open(CMD, "$pdftomapping $dir/cover.pdf |");
+				open(CMD, "$pdftomapping $pdfdir/$file |");
 				{
 					while (<CMD>) {
 					    if (/^PAGE: ([0-9]+)$/) {
 					    	if ($1 != 1) {
 					    		last;
 					    	}
-					    	@{$mapping{0}} = ();
+					    	@{$mapping{$num + 0}} = ();
 					    }
 					    elsif (/^LINK: ([\-\.0-9]+) ([\-\.0-9]+) ([\-\.0-9]+) ([\-\.0-9]+) URI: (.+)$/) {
-					    	push @{$mapping{0}}, [$1, $2, $3, $4, $5];
+					    	push @{$mapping{$num + 0}}, [$1, $2, $3, $4, $5];
 					    }
 					}
 				}
 				close(CMD);
-			}
-			elsif ( -f "$dir/cover.jpg" ) {
-				my $image = Image::Magick->new;
-				$image->Read("$dir/cover.jpg");
-				if ($viewHeight > 0) {
-					$image->Scale(geometry => $viewHeight.'x'.$viewHeight);
+				
+				my ( $viewHeight, $suffix, $opts ) = imageOptions( $num + 0 );
+				Utils::pdftoimage("$pdfdir/$file", "$outdir/$num.$suffix", $opts);
+				if ($?) {
+					print STDERR
+"$dir: $file を画像に変換する際にエラーが発生しました。(1)\n";
 				}
-				else {
-					$image->Scale(geometry => '2068x2068');
-				}
-				$image->Write("$outdir/00000.jpg");
 			}
-			if ($imagespine == 0) {
-				# SVGでくるむ
-				opendir $dh, "$outdir";
-				@files = sort grep { /^\d{5}\.[jp][pn]g$/ } readdir $dh;
-				closedir($dh);
-				foreach my $file (@files) {
-					my ($i) = ( $file =~ /^(\d+)\.[jp][pn]g$/ );
-					wrapimage( "$outdir/$file", "$outdir/$i.svg", $w, $h,
-						( $i % 2 == ( ( $ppd eq 'rtl' ) ? 0 : 1 ) ), $kobo, @{$mapping{$i+0}} );
+			if (! $skipBlankPage) {
+				foreach my $num ( keys( %blankPages ) ) {
+					if ($sample && !$samplePages{$num}) {
+						next;
+					}
+					my ( $viewHeight, $suffix, $opts ) = imageOptions( $num );
+					if ($blankPages{$num} == 2 || -f "$outdir/$num.$suffix") {
+						next;
+					}
+					$num = sprintf("%05d", $num);
+					if (-f "$dir/BlankImage/blank.pdf") {
+						# ブランクページがあれば、それを使う
+						Utils::pdftoimage("$dir/BlankImage/blank.pdf", "$outdir/$num.$suffix", $opts);
+					}
+					else {
+						# 直前のページから白紙ページを生成
+						my $outfile = "$outdir/$num.$suffix";
+						for (my $i = $num; $i >= 0; --$i) {
+							my $file = "$outdir/".sprintf("%05d", $i).'.'.$suffix;
+							if ( -f $file ) {
+								system "convert -colorize 100,100,100 -negate $file $outfile";
+								last;
+							}
+						}
+						if ( !( -f $outfile ) ) {
+							for (my $i = $num; $i < $num + 100; ++$i) {
+								my $file = "$outdir/".sprintf("%05d", $i).'.'.$suffix;
+								if ( -f $file ) {
+									system "convert -colorize 100,100,100 -negate $file $outfile";
+									last;
+								}
+							}
+						}
+					}
 				}
 			}
 		}
 		else {
-			# SVGに変換
-			system "$pdftosvg $pdfdir $outdir" . ( $otf ? ' true' : '' );
+			# 単一のPDF
 			
-			# ブランクページを消す
-			foreach my $i (keys(%blankPages)) {
-				unlink sprintf( "$outdir/%05d.svg", $i);
+			# リンクの抽出
+			open(CMD, "$pdftomapping $pdfdir |");
+			{
+				my $i = 0;
+				while (<CMD>) {
+				    if (/^PAGE: ([0-9]+)$/) {
+				    	$i = $1;
+				    	@{$mapping{$i}} = ();
+				    }
+				    elsif (/^LINK: ([\-\.0-9]+) ([\-\.0-9]+) ([\-\.0-9]+) ([\-\.0-9]+) URI: (.+)$/) {
+				    	push @{$mapping{$i}}, [$1, $2, $3, $4, $5];
+				    }
+				}
 			}
-			
-			if ( !( -f "$dir/cover.pdf" ) ) {
-				if ( -f "$dir/cover.jpg" ) {
-					copy "$dir/cover.jpg", "$outdir/00000.jpg";
+			close(CMD);
+
+			for ( my $i = 1 ; ; ++$i ) {
+				# ブランクページは飛ばす
+				if ($skipBlankPage && $blankPages{$i}) {
+					next;
 				}
-				if ( -f "$outdir/00000.jpg" && $imagespine == 0) {
-					my $dir;
-					opendir( $dir, $outdir );
-					my @files = sort grep { /^\d{5}\.svg$/ } readdir($dir);
-					closedir($dir);
-					my $xp =
-					  XML::XPath->new( filename => "$outdir/" . $files[0] );
-					my $viewBox = $xp->findvalue('/svg/@viewBox')->value;
-					my ( $width, $height ) =
-					  ( $viewBox =~ /^0 0 (\d+) (\d+)$/ );
-					wrapimage( "$outdir/00000.jpg", "$outdir/00000.svg", $width,
-						$height, ( $ppd eq 'rtl' ), $kobo, () );
+				if ($blankPages{$i} == 2) {
+					next;
 				}
+				
+				# サンプルページだけ出力する場合
+				if ($sample && !$samplePages{$i}) {
+					if ($i >= $maxSamplePage) {
+						last;
+					}
+					next;
+				}
+				
+				my ( $viewHeight, $suffix, $opts ) = imageOptions($i);
+				if ($blankPages{$i}) {
+					my $num = sprintf("%05d", $i);
+					if (-f "$dir/BlankImage/blank.pdf") {
+						# ブランクページがあれば、それを使う
+						Utils::pdftoimage("$dir/BlankImage/blank.pdf", "$outdir/$num.$suffix", $opts);
+					}
+					else {
+						Utils::pdftoimage("$pdfdir", "$outdir/", $opts, $i);
+						system "convert -colorize 100,100,100 -negate $outdir/$num.$suffix $outdir/$num.$suffix";
+					}
+				}
+				else {
+					Utils::pdftoimage("$pdfdir", "$outdir/", $opts, $i);
+				}
+				if ($?) {
+					print STDERR
+"$dir: $pdfdir を画像に変換する際にエラーが発生しました。(2)\n";
+				}
+				
+				( -f sprintf( "$outdir/%05d.$suffix", $i ) ) or last;
 			}
 		}
 
-		if ($otf) {
-			opendir my $dir, "$outdir/fonts";
-			my @files = grep { /^.+\.svg$/ } readdir $dir;
-			foreach my $file (@files) {
-				if ( $file =~ /^.+\.svg$/ ) {
-					system "$tootf $outdir/fonts/$file";
+		opendir $dh, "$outdir";
+		my @files = sort grep { /^\d{5}\.[jp][pn]g$/ } readdir $dh;
+		closedir($dh);
+		( $w, $h ) = imgsize( "$outdir/" . $files[0] );
+		
+		my ( $viewHeight, $suffix, $opts ) = imageOptions(0);
+		if ( -f "$dir/cover.pdf" ) {
+
+			# カバー
+			Utils::pdftoimage("$dir/cover.pdf", "$outdir/00000.$suffix", $opts);
+			if ($?) {
+				print STDERR
+"$dir: cover.pdf を画像に変換する際にエラーが発生しました。(3)\n";
+				last;
+			}
+			( $w, $h ) = imgsize("$outdir/00000.$suffix");
+			
+			# リンクの抽出
+			open(CMD, "$pdftomapping $dir/cover.pdf |");
+			{
+				while (<CMD>) {
+				    if (/^PAGE: ([0-9]+)$/) {
+				    	if ($1 != 1) {
+				    		last;
+				    	}
+				    	@{$mapping{0}} = ();
+				    }
+				    elsif (/^LINK: ([\-\.0-9]+) ([\-\.0-9]+) ([\-\.0-9]+) ([\-\.0-9]+) URI: (.+)$/) {
+				    	push @{$mapping{0}}, [$1, $2, $3, $4, $5];
+				    }
 				}
 			}
-			closedir $dir;
-
-			system "rm $outdir/fonts/*.svg";
-
-			opendir $dir, $outdir;
-			@files = grep { /^.+\.svg$/ } readdir $dir;
-			foreach my $file (@files) {
-				open my $in,  "< $outdir/$file";
-				open my $out, "> $outdir/$file.tmp";
-				foreach my $line (<$in>) {
-					$line =~
-s/src: url\(\"fonts\/font\-(\d+)\.svg\"\) format\(\"svg\"\);/src: url\(\"fonts\/font\-$1\.otf\"\) format\(\"opentype\"\);/s;
-					print $out $line;
-				}
-				close $in;
-				close $out;
-				unlink "$outdir/$file";
-				rename "$outdir/$file.tmp", "$outdir/$file";
+			close(CMD);
+		}
+		elsif ( -f "$dir/cover.jpg" ) {
+			my $image = Image::Magick->new;
+			$image->Read("$dir/cover.jpg");
+			if ($viewHeight > 0) {
+				$image->Scale(geometry => $viewHeight.'x'.$viewHeight);
 			}
-			closedir $dir;
+			else {
+				$image->Scale(geometry => '2068x2068');
+			}
+			$image->Write("$outdir/00000.jpg");
+		}
+		if ($imagespine == 0) {
+			# SVGでくるむ
+			opendir $dh, "$outdir";
+			@files = sort grep { /^\d{5}\.[jp][pn]g$/ } readdir $dh;
+			closedir($dh);
+			foreach my $file (@files) {
+				my ($i) = ( $file =~ /^(\d+)\.[jp][pn]g$/ );
+				wrapimage( "$outdir/$file", "$outdir/$i.svg", $w, $h,
+					( $i % 2 == ( ( $ppd eq 'rtl' ) ? 0 : 1 ) ), $kobo, @{$mapping{$i+0}} );
+			}
 		}
 
 		if ($insertdir) {

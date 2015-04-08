@@ -4,22 +4,16 @@ use File::Copy;
 use Archive::Zip;
 use Image::Magick;
 
+use Utils;
+
 require Exporter;
 @ISA	= qw(Exporter);
 
 use utf8;
 use strict;
 
-# テキストのトリム
-sub trim {
-	my $val = shift;
-	$val =~ s/^\s*(.*?)\s*$/$1/;
-	return $val;
-}
-
 sub generate {
 	our $base = dirname(__FILE__);
-	our $pdftoppm = "$base/../../poppler/utils/pdftoppm";
 
 	my $dir = $_[0];
 	my $destdir = $_[1];
@@ -63,20 +57,22 @@ sub generate {
 	# サンプル画像
 	sub outputSample {
 		my ($dir, $contentsID, $sampleType, $startPage, $endPage) = @_;
-		my $scale;
+		my %opts = ();
 		if ($sampleType eq "s") {
-			$scale = "-scale-to 480";
+			$opts{w} = $opts{h} = 480;
 		}
 		elsif ($sampleType eq "t") {
-			$scale = "-scale-to-x 198 -scale-to-y 285";
+			$opts{w} = 198;
+			$opts{h} = 285;
 		}
+		$opts{suffix} = 'jpg';
 		my $pdf = "$dir/$contentsID.pdf";
 		if (-f $pdf) {
 			if ($startPage == -1) {
-				system "$pdftoppm -cropbox $scale -jpeg $pdf $outdir/";
+				Utils::pdftoimage($pdf, "$outdir/", \%opts, -1);
 			}
 			else {
-				system "$pdftoppm -f $startPage -l $endPage -cropbox $scale -jpeg $pdf $outdir/";
+				Utils::pdftoimage($pdf, "$outdir/", \%opts, $startPage == 0 ? 1 : $startPage, $endPage);
 			}
 			if ($startPage == -1) {
 				$startPage = 1;
@@ -94,7 +90,7 @@ sub generate {
 		do {
 			$pdf = sprintf("$pdfdir/%05d.pdf", $startPage);
 			if (-f $pdf) {
-				system "$pdftoppm -cropbox $scale -jpeg $pdf $outdir/";
+				Utils::pdftoimage($pdf, "$outdir/", \%opts, -1);
 				if ($?) {
 					print STDERR "$dir: $pdf をJPEGに変換する際にエラーが発生しました。\n";
 				}
@@ -111,16 +107,16 @@ sub generate {
 	$sampleType = "s";
 	foreach my $node ($samples->get_nodelist) {
 		$xp = XML::XPath->new(context => $node);
-		$startPage = trim($xp->findvalue("StartPage/text()")->value) - $previewPageOrigin;
-		$endPage = trim($xp->findvalue("EndPage/text()")->value) - $previewPageOrigin;
+		$startPage = Utils::trim($xp->findvalue("StartPage/text()")->value) - $previewPageOrigin;
+		$endPage = Utils::trim($xp->findvalue("EndPage/text()")->value) - $previewPageOrigin;
 		outputSample($dir, $contentsID, $sampleType, $startPage, $endPage);
 	}
 	if (-f $metafile2) {
 		$xp = XML::XPath->new(filename => $metafile2);
-		$sampleType = trim($xp->findvalue("/ContentsSample/SampleType/text()")->value);
+		$sampleType = Utils::trim($xp->findvalue("/ContentsSample/SampleType/text()")->value);
 		if ($sampleType eq "s") {
-			$startPage = trim($xp->findvalue("/ContentsSample/StartPage/text()")->value) - $previewPageOrigin;
-			$endPage = trim($xp->findvalue("/ContentsSample/EndPage/text()")->value) - $previewPageOrigin;
+			$startPage = Utils::trim($xp->findvalue("/ContentsSample/StartPage/text()")->value) - $previewPageOrigin;
+			$endPage = Utils::trim($xp->findvalue("/ContentsSample/EndPage/text()")->value) - $previewPageOrigin;
 			outputSample($dir, $contentsID, $sampleType, $startPage, $endPage);
 		}
 	}
@@ -142,12 +138,16 @@ sub generate {
 	}
 	
 	if (-f "$dir/cover.pdf") {
-		system "$pdftoppm -cropbox -l 1 -scale-to $thumbnail_height -jpeg $dir/cover.pdf $workdir/cover";
+		my %opts = ();
+		$opts{h} = $thumbnail_height;
+		$opts{w} = $thumbnail_height;
+		$opts{suffix} = "jpg";
+		Utils::pdftoimage("$dir/cover.pdf", "$workdir/coverx.jpg", \%opts);
 		if ($?) {
 			print STDERR "$dir: cover.pdf をJPEGに変換する際にエラーが発生しました。\n";
 		}
 		else {
-			move "$workdir/cover00001.jpg", "$destdir/$contentsID.jpg";
+			move "$workdir/coverx.jpg", "$destdir/$contentsID.jpg";
 		}
 	}
 	else {
