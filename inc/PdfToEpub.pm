@@ -183,6 +183,9 @@ sub transcode {
 	
 	our $previewPageOrigin = 1;
 	
+	# 変換に使うプログラム
+	our $program = 'poppler';
+	
 	for ( my $i = 0 ; $i < @ARGV ; ++$i ) {
 		if ( $ARGV[$i] eq '-view-height' ) {
 			$view_height = $ARGV[ ++$i ] + 0;
@@ -193,6 +196,9 @@ sub transcode {
 		}
 		elsif ( $ARGV[$i] eq '-aaVector' ) {
 			$aaVector = $ARGV[ ++$i ];
+		}
+		elsif ( $ARGV[$i] eq '-program' ) {
+			$program = $ARGV[ ++$i ];
 		}
 		elsif ( $ARGV[$i] eq '-quality' ) {
 			$default_qf = $ARGV[ ++$i ];
@@ -592,7 +598,7 @@ EOD
 				close(CMD);
 				
 				my ( $viewHeight, $suffix, $opts ) = imageOptions( $num + 0 );
-				Utils::pdftoimage("$pdfdir/$file", "$outdir/$num.$suffix", $opts);
+				Utils::pdftoimage($program, "$pdfdir/$file", "$outdir/$num.$suffix", $opts);
 				if ($?) {
 					print STDERR
 "$dir: $file を画像に変換する際にエラーが発生しました。(1)\n";
@@ -610,7 +616,7 @@ EOD
 					$num = sprintf("%05d", $num);
 					if (-f "$dir/BlankImage/blank.pdf") {
 						# ブランクページがあれば、それを使う
-						Utils::pdftoimage("$dir/BlankImage/blank.pdf", "$outdir/$num.$suffix", $opts);
+						Utils::pdftoimage($program, "$dir/BlankImage/blank.pdf", "$outdir/$num.$suffix", $opts);
 					}
 					else {
 						# 直前のページから白紙ページを生成
@@ -676,15 +682,15 @@ EOD
 					my $num = sprintf("%05d", $i);
 					if (-f "$dir/BlankImage/blank.pdf") {
 						# ブランクページがあれば、それを使う
-						Utils::pdftoimage("$dir/BlankImage/blank.pdf", "$outdir/$num.$suffix", $opts);
+						Utils::pdftoimage($program, "$dir/BlankImage/blank.pdf", "$outdir/$num.$suffix", $opts);
 					}
 					else {
-						Utils::pdftoimage("$pdfdir", "$outdir/", $opts, $i);
+						Utils::pdftoimage($program, "$pdfdir", "$outdir/", $opts, $i);
 						system "convert -colorize 100,100,100 -negate $outdir/$num.$suffix $outdir/$num.$suffix";
 					}
 				}
 				else {
-					Utils::pdftoimage("$pdfdir", "$outdir/", $opts, $i);
+					Utils::pdftoimage($program, "$pdfdir", "$outdir/", $opts, $i);
 				}
 				if ($?) {
 					print STDERR
@@ -704,7 +710,7 @@ EOD
 		if ( -f "$dir/cover.pdf" ) {
 
 			# カバー
-			Utils::pdftoimage("$dir/cover.pdf", "$outdir/00000.$suffix", $opts);
+			Utils::pdftoimage($program, "$dir/cover.pdf", "$outdir/00000.$suffix", $opts);
 			if ($?) {
 				print STDERR
 "$dir: cover.pdf を画像に変換する際にエラーが発生しました。(3)\n";

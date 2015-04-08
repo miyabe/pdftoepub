@@ -23,24 +23,10 @@ my $outputType = 0;
 sub process {
 	my $src = $_[0];
 	my $ret = 1;
-	if ($outputType eq 'raster') {
-		PdfToEpub::transcode($src, $dest, 1) or ($ret = 0);
-		Booklista::generate($src, $dest) or ($ret = 0);
-	}
-	elsif ($outputType eq 'svg') {
-		PdfToEpub::transcode($src, $dest, 0) or ($ret = 0);
-		Booklista::generate($src, $dest) or ($ret = 0);
-	}
-	else {
-		my $destdir = "$dest/raster";
-		mkdir $destdir;
-		PdfToEpub::transcode($src, $destdir, 1) or ($ret = 0);
-		Booklista::generate($src, $destdir) or ($ret = 0);
-		$destdir = "$dest/svg";
-		mkdir $destdir;
-		PdfToEpub::transcode($src, $destdir, 0) or ($ret = 0);
-		Booklista::generate($src, $destdir) or ($ret = 0);
-	}
+	
+	PdfToEpub::transcode($src, $dest, 1) or ($ret = 0);
+	Booklista::generate($src, $dest) or ($ret = 0);
+
 	return $ret;
 }
 if ($src =~ /^.+\/$/) {

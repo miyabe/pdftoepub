@@ -15,14 +15,15 @@ sub trim {
 }
 
 # PDF画像変換
-sub pdftoimage($$%;$$) {
+sub pdftoimage($$$%;$$) {
+	my $program = shift;
 	my $inFile = shift;
 	my $outFile = shift;
 	my $opts = shift;
 	my $f = shift || 0;
 	my $l = shift || $f;
 
-	if (1) {
+	if ($program eq 'mupdf') {
 		# muPDF
 		my $options = "";
 		if ($$opts{r}) {

@@ -63,15 +63,6 @@ make
 cd $PDFTOEPUB_DIR
 make
 
-■ ツールの説明
-・pdftosvg PDF 出力先ディレクトリ [SVGフォント出力(true|false)]
-PDFをSVGファイルに変換します。SVGファイルは１ページ目から順に 1.svg, 2.svg, 3.svg ... という名前で生成されます。通常はフォントは各SVGファイルの中に含まれますが、３番目の引数にtrueを設定すると、出力先ディレクトリにfontsディレクトリを作成し、その中に複数のSVGフォントが font-0.svg, font-1.svg, font-2.svg ... という名前で生成され、各ページのSVGから参照されます。
-
-例:
-以下のコマンドはtest.pdfをSVGに変換し、結果をTESTディレクトリに出力します
-
-./pdftosvg test.pdf TEST
-
 ■ パッケージツール
 実行にはimagemagickが必要です。
 
@@ -82,24 +73,26 @@ PDFをSVGファイルに変換します。SVGファイルは１ページ目か�
 [ID]/m_[ID].xml -サンプル属性XML
 [ID]/ins -挿し込みデータ
 
-・pdftoepub.pl ディレクトリ名 出力先 [raster|svg] [-view-height ビュー高さ] [-dpi 解像度] [-aaVector yes|no] [-quality 画質] [-png] [-epub2] [-kobo] [-imagespine] [-skipBlankPage] [-sample] [-no-initial-scale] [-thumbnail-height サムネイル高さ]
+・pdftoepub.pl ディレクトリ名 出力先 [-view-height ビュー高さ] [-dpi 解像度] [-aaVector yes|no] [-program poppler|mupdf] [-quality 画質] [-png] [-epub2] [-kobo] [-imagespine] [-skipBlankPage] [-sample] [-no-initial-scale] [-thumbnail-height サムネイル高さ]
 PDFからEPUBを生成するPerlスクリプトです。
 ディレクトリ名の最後に / を付けると、さらにディレクトリ中にある複数のディレクトリを処理します。
-raster|svgのいずれかを指定すると、全体をラスター化したもの、SVGにしたもののいずれかを出力します。指定しない場合は両方を出力します。
 
 EPUBに挿し込むデータは挿し込みデータディレクトリ([ID]/ins)にEPUB内と同じディレクトリ構成で配置します。EPUBに挿し込むページは ページ番号-通し番号/main.html という名前で配置しておきます。例えば 3-1/main.html, 3-2/main.html, 3-3/main.html ... という名前で配置すると、それぞれのコンテンツが順に3ページと4ページの間に挿入されます。1ページの前に挿入する場合は 0-1/main.html のようにします。
 
 -view-height, -aaVectorオプションはコマンドラインの最後に付けて下さい。
 
--view-heightは、rasterで出力される画像の高さをピクセル数で指定します。デフォルトは2048です。
+-view-heightは、画像の高さをピクセル数で指定します。デフォルトは2048です。
 
 -dpiは出力結果の解像度をdpi単位で指定します。
 -view-heightと-dpiの両方を指定すると、後のほうが優先されます
 
--aaVectorは、rasterで出力されるときに、文字以外のオブジェクトをアンチエイリアスするかどうかを指定します。
+-aaVectorは、文字以外のオブジェクトをアンチエイリアスするかどうかを指定します。
 デフォルトはyesでアンチエイリアスをしますが、noを指定するとアンチエイリアスをしません。
 
--qualityは、rasterで出力されるJPEG画像のデフォルト画質で、1から100の値を設定します。デフォルトは98です。PNGには無関係です。
+-programは、PDFから画像に変換するプログラムを指定します。
+popplerまたはmupdfのいずれかを指定可能です。デフォルトはpopplerです。
+
+-qualityは、JPEG画像のデフォルト画質で、1から100の値を設定します。デフォルトは98です。PNGには無関係です。
 
 -pngを付けるとPNG形式で出力します。
 

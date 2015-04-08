@@ -30,6 +30,9 @@ sub generate {
 	
 	our $previewPageOrigin = 1;
 	
+	# 変換に使うプログラム
+	our $program = 'poppler';
+	
 	if (! -f $metafile1) {
 		print "$dir: メタ情報XMLファイル ($contentsID.xml) がありません。\n";
 		return 0;
@@ -44,6 +47,9 @@ sub generate {
 			if ($ARGV[ ++$i ] eq '0') {
 				$previewPageOrigin = 0;
 			}
+		}
+		elsif ( $ARGV[$i] eq '-program' ) {
+			$program = $ARGV[ ++$i ];
 		}
 	}
 		
@@ -69,10 +75,10 @@ sub generate {
 		my $pdf = "$dir/$contentsID.pdf";
 		if (-f $pdf) {
 			if ($startPage == -1) {
-				Utils::pdftoimage($pdf, "$outdir/", \%opts, -1);
+				Utils::pdftoimage($program, $pdf, "$outdir/", \%opts, -1);
 			}
 			else {
-				Utils::pdftoimage($pdf, "$outdir/", \%opts, $startPage == 0 ? 1 : $startPage, $endPage);
+				Utils::pdftoimage($program, $pdf, "$outdir/", \%opts, $startPage == 0 ? 1 : $startPage, $endPage);
 			}
 			if ($startPage == -1) {
 				$startPage = 1;
@@ -90,7 +96,7 @@ sub generate {
 		do {
 			$pdf = sprintf("$pdfdir/%05d.pdf", $startPage);
 			if (-f $pdf) {
-				Utils::pdftoimage($pdf, "$outdir/", \%opts, -1);
+				Utils::pdftoimage($program, $pdf, "$outdir/", \%opts, -1);
 				if ($?) {
 					print STDERR "$dir: $pdf をJPEGに変換する際にエラーが発生しました。\n";
 				}
@@ -142,7 +148,7 @@ sub generate {
 		$opts{h} = $thumbnail_height;
 		$opts{w} = $thumbnail_height;
 		$opts{suffix} = "jpg";
-		Utils::pdftoimage("$dir/cover.pdf", "$workdir/coverx.jpg", \%opts);
+		Utils::pdftoimage($program, "$dir/cover.pdf", "$workdir/coverx.jpg", \%opts);
 		if ($?) {
 			print STDERR "$dir: cover.pdf をJPEGに変換する際にエラーが発生しました。\n";
 		}
