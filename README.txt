@@ -70,7 +70,7 @@ make
 [ID]/m_[ID].xml -サンプル属性XML
 [ID]/ins -挿し込みデータ
 
-・pdftoepub.pl ディレクトリ名 出力先 [-view-height ビュー高さ] [-dpi 解像度] [-aaVector yes|no] [-program poppler|mupdf] [-quality 画質] [-png] [-epub2] [-kobo] [-imagespine] [-skipBlankPage] [-sample] [-no-initial-scale] [-thumbnail-height サムネイル高さ]
+・pdftoepub.pl ディレクトリ名 出力先 [-view-height ビュー高さ] [-dpi 解像度] [-aaVector yes|no] [-program poppler|mupdf [pages]] [-quality 画質] [-png] [-epub2] [-kobo] [-imagespine] [-skipBlankPage] [-sample] [-no-initial-scale] [-thumbnail-height サムネイル高さ]
 PDFからEPUBを生成するPerlスクリプトです。
 ディレクトリ名の最後に / を付けると、さらにディレクトリ中にある複数のディレクトリを処理します。
 
@@ -88,6 +88,8 @@ EPUBに挿し込むデータは挿し込みデータディレクトリ([ID]/ins)
 
 -programは、PDFから画像に変換するプログラムを指定します。
 popplerまたはmupdfのいずれかを指定可能です。デフォルトはpopplerです。
+[pages]に、カンマ区切りのページを指定することができます。ページを指定すると、そのページだけ指定したプログラムで処理されます。
+0ページは表紙で、本文は1ページから開始します。
 
 -qualityは、JPEG画像のデフォルト画質で、1から100の値を設定します。デフォルトは98です。PNGには無関係です。
 

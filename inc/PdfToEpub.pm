@@ -185,6 +185,7 @@ sub transcode {
 	
 	# 変換に使うプログラム
 	our $program = 'poppler';
+	our %pageToProgram = ();
 	
 	for ( my $i = 0 ; $i < @ARGV ; ++$i ) {
 		if ( $ARGV[$i] eq '-view-height' ) {
@@ -198,7 +199,19 @@ sub transcode {
 			$aaVector = $ARGV[ ++$i ];
 		}
 		elsif ( $ARGV[$i] eq '-program' ) {
+			my $op = $program;
 			$program = $ARGV[ ++$i ];
+			if ($i < @ARGV - 1) {
+				my $pages = $ARGV[ $i + 1 ];
+				if ($pages =~ /^[0-9,]+$/) {
+					my @list = split(/,/, $pages);
+					foreach my $page(@list){
+						$pageToProgram{$page} = $program;
+					}
+					$program = $op;
+					++$i;
+				}
+			}
 		}
 		elsif ( $ARGV[$i] eq '-quality' ) {
 			$default_qf = $ARGV[ ++$i ];
@@ -598,7 +611,11 @@ EOD
 				close(CMD);
 				
 				my ( $viewHeight, $suffix, $opts ) = imageOptions( $num + 0 );
-				Utils::pdftoimage($program, "$pdfdir/$file", "$outdir/$num.$suffix", $opts);
+				my $p = $pageToProgram{$num + 0};
+				if (!$p) {
+					$p = $program;
+				}
+				Utils::pdftoimage($p, "$pdfdir/$file", "$outdir/$num.$suffix", $opts);
 				if ($?) {
 					print STDERR
 "$dir: $file を画像に変換する際にエラーが発生しました。(1)\n";
@@ -616,7 +633,11 @@ EOD
 					$num = sprintf("%05d", $num);
 					if (-f "$dir/BlankImage/blank.pdf") {
 						# ブランクページがあれば、それを使う
-						Utils::pdftoimage($program, "$dir/BlankImage/blank.pdf", "$outdir/$num.$suffix", $opts);
+						my $p = $pageToProgram{$num + 0};
+						if (!$p) {
+							$p = $program;
+						}
+						Utils::pdftoimage($p, "$dir/BlankImage/blank.pdf", "$outdir/$num.$suffix", $opts);
 					}
 					else {
 						# 直前のページから白紙ページを生成
@@ -678,19 +699,23 @@ EOD
 				}
 				
 				my ( $viewHeight, $suffix, $opts ) = imageOptions($i);
+				my $p = $pageToProgram{$i};
+				if (!$p) {
+					$p = $program;
+				}
 				if ($blankPages{$i}) {
 					my $num = sprintf("%05d", $i);
 					if (-f "$dir/BlankImage/blank.pdf") {
 						# ブランクページがあれば、それを使う
-						Utils::pdftoimage($program, "$dir/BlankImage/blank.pdf", "$outdir/$num.$suffix", $opts);
+						Utils::pdftoimage($p, "$dir/BlankImage/blank.pdf", "$outdir/$num.$suffix", $opts);
 					}
 					else {
-						Utils::pdftoimage($program, "$pdfdir", "$outdir/", $opts, $i);
+						Utils::pdftoimage($p, "$pdfdir", "$outdir/", $opts, $i);
 						system "convert -colorize 100,100,100 -negate $outdir/$num.$suffix $outdir/$num.$suffix";
 					}
 				}
 				else {
-					Utils::pdftoimage($program, "$pdfdir", "$outdir/", $opts, $i);
+					Utils::pdftoimage($p, "$pdfdir", "$outdir/", $opts, $i);
 				}
 				if ($?) {
 					print STDERR
@@ -708,9 +733,12 @@ EOD
 		
 		my ( $viewHeight, $suffix, $opts ) = imageOptions(0);
 		if ( -f "$dir/cover.pdf" ) {
-
 			# カバー
-			Utils::pdftoimage($program, "$dir/cover.pdf", "$outdir/00000.$suffix", $opts);
+			my $p = $pageToProgram{0};
+			if (!$p) {
+				$p = $program;
+			}
+			Utils::pdftoimage($p, "$dir/cover.pdf", "$outdir/00000.$suffix", $opts);
 			if ($?) {
 				print STDERR
 "$dir: cover.pdf を画像に変換する際にエラーが発生しました。(3)\n";

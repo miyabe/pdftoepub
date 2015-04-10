@@ -49,7 +49,15 @@ sub generate {
 			}
 		}
 		elsif ( $ARGV[$i] eq '-program' ) {
+			my $op = $program;
 			$program = $ARGV[ ++$i ];
+			if ($i < @ARGV - 1) {
+				my $pages = $ARGV[ $i + 1 ];
+				if ($pages =~ /^[0-9,]+$/) {
+					$program = $op;
+					++$i;
+				}
+			}
 		}
 	}
 		
