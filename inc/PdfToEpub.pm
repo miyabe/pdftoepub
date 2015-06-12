@@ -256,7 +256,8 @@ sub transcode {
 	}
 
 	my $metafile  = "$dir/$contentsID.xml";
-	my $insertdir = "$base/ins";
+	my $staticdir = "$base/static";
+	my $insertdir = "$dir/ins";
 	my $workdir   = "$dir/work";
 	our $outdir    = "$workdir/epub";
 	my $outfile   = "$workdir/$contentsID" . "_eEPUB3.epub";
@@ -524,7 +525,7 @@ EOD
 
 		close($fp);
 	}
-
+	
 	sub imageOptions {
 		my ($page) = @_;
 		my %opts = {};
@@ -566,7 +567,6 @@ EOD
 	}
 
 	# PDFから画像に変換する
-			
 	{
 		my %mapping = (); # リンク
 		
@@ -731,9 +731,9 @@ EOD
 		closedir($dh);
 		( $w, $h ) = imgsize( "$outdir/" . $files[0] );
 		
+		# カバー
 		my ( $viewHeight, $suffix, $opts ) = imageOptions(0);
 		if ( -f "$dir/cover.pdf" ) {
-			# カバー
 			my $p = $pageToProgram{0};
 			if (!$p) {
 				$p = $program;
@@ -774,8 +774,49 @@ EOD
 			}
 			$image->Write("$outdir/00000.jpg");
 		}
+		
+		# 挿入するページ
+		if ( -e $insertdir) {
+			my ( $viewHeight, $suffix, $opts ) = imageOptions(-1);
+			opendir $dh, $insertdir;
+			@files = grep { /^add_\-?[0-9]+\-[0-9]+\.pdf$/ } readdir $dh;
+			closedir($dh);
+			foreach my $file (@files) {
+				my ($name) = ( $file =~ /^add_(.+)\.pdf$/ );
+				mkdir( "$outdir/$name", 0755 );
+				for (my $i = 1;; ++$i) {
+					Utils::pdftoimage($program, "$insertdir/$file", "$outdir/$name/main", $opts, $i);
+					( -f sprintf( "$outdir/$name/main%05d.$suffix", $i ) ) or last;
+				}
+				
+				# リンクの抽出
+				open(CMD, "$pdftomapping $insertdir/$file |");
+				{
+					my $i = 0;
+					while (<CMD>) {
+					    if (/^PAGE: ([0-9]+)$/) {
+					    	$i = $1;
+					    	@{$mapping{$name.$i}} = ();
+					    }
+					    elsif (/^LINK: ([\-\.0-9]+) ([\-\.0-9]+) ([\-\.0-9]+) ([\-\.0-9]+) URI: (.+)$/) {
+					    	push @{$mapping{$name.$i}}, [$1, $2, $3, $4, $5];
+					    }
+					}
+				}
+				close(CMD);
+			
+				if ($imagespine == 0) {
+					for (my $i = 1;; ++$i) {
+						my $file = sprintf( "$outdir/$name/main%05d.$suffix", $i );
+						( -f $file ) or last;
+						wrapimage( $file,  sprintf( "$outdir/$name/main%05d.svg", $i ), $w, $h, 0, $kobo, @{$mapping{$name.$i}} );
+					}
+				}
+			}
+		}
+		
+		# SVGでくるむ
 		if ($imagespine == 0) {
-			# SVGでくるむ
 			opendir $dh, "$outdir";
 			@files = sort grep { /^\d{5}\.[jp][pn]g$/ } readdir $dh;
 			closedir($dh);
@@ -786,9 +827,16 @@ EOD
 			}
 		}
 
-		if ($insertdir) {
-			system "cp -r $insertdir/* $outdir";
+		# 挿入するコンテンツ
+		if ( -e $insertdir) {
+			opendir $dh, $insertdir;
+			@files = sort grep { /^\-?[0-9]+\-[0-9]+$/ } readdir $dh;
+			closedir($dh);
+			foreach my $file (@files) {
+				system "cp -r $insertdir/$file $outdir";
+			}
 		}
+		system "cp -r $staticdir/* $outdir";
 	}
 
 	my @files;
@@ -942,9 +990,13 @@ EOD
 			$basename =~ /^.+\.epub$/     and return;
 			$basename =~ /^META-INF\/.*$/ and return;
 			$basename =~ /^[^\/]*\.svg$/      and return;
+			$basename =~ /^[0-9\-]+\/main[0-9]*\.svg$/      and return;
+			$basename =~ /^[0-9\-]+\/main[0-9]*\.html$/      and return;
 			if ($imagespine) {
 				$basename =~ /^[^\/]*\.png$/      and return;
 				$basename =~ /^[^\/]*\.jpg$/      and return;
+				$basename =~ /^[0-9\-]+\/main[0-9]*\.png$/      and return;
+				$basename =~ /^[0-9\-]+\/main[0-9]*\.jpg$/      and return;
 			}
 			
 			my $is_image = 0;
@@ -1009,12 +1061,54 @@ EOD
 		# コンテンツの挿入
 		sub insert {
 			my $j = 1;
-			while ( -f sprintf( "$outdir/%05d-%05d/main.html", $i, $j ) ) {
-				my $id = "t$i-$j";
-				my $file = sprintf( "%05d-%05d/main.html", $i, $j );
-				print $fp
-"    <item id=\"$id\" href=\"$file\" media-type=\"application/xhtml+xml\"/>\n";
-				push @items, [ $id, $file ];
+			my $l = 1;
+			while (1) {
+				my $exist = 0;
+				for (my $k = 0;; ++$k) {
+					my $name;
+					my $id;
+					if ($k == 0) {
+						$name = sprintf( "%05d-%05d/main", $i, $j );
+						$id = "t$i-$j";
+					}
+					else {
+						$name = sprintf( "%05d-%05d/main%05d", $i, $j, $k );
+						$id = "t$i-$j-$k";
+					}
+					my $file;
+					if (-f "$outdir/$name.html") {
+						$file = "$name.html";
+						print $fp
+		"    <item id=\"$id\" href=\"$file\" media-type=\"application/xhtml+xml\"/>\n";
+					}
+					elsif (-f "$outdir/$name.svg") {
+						$file = "$name.svg";
+						print $fp
+		"    <item id=\"$id\" href=\"$file\" media-type=\"image/svg+xml\"/>\n";
+					}
+					elsif (-f "$outdir/$name.png") {
+						$file = "$name.png";
+						print $fp
+		"    <item id=\"$id\" href=\"$file\" media-type=\"image/png\"/>\n";
+					}
+					elsif (-f "$outdir/$name.jpg") {
+						$file = "$name.jpg";
+						print $fp
+		"    <item id=\"$id\" href=\"$file\" media-type=\"image/jpeg\"/>\n";
+					}
+					else {
+						if ($k == 0) {
+							next;
+						}
+						last;
+					}
+					$exist = 1;
+					push @items, [ $id, $file, $l ];
+					++$l;
+				}
+				if ($exist == 0) {
+					last;
+				}
 				++$j;
 			}
 		}
@@ -1023,6 +1117,7 @@ EOD
 		$i = -1;
 		my $max = $files[-1];
 		$max =~ s/\..+$//;
+		insert();
 		while ( $i < $max ) {
 			++$i;
 			my $id = "t$i";
@@ -1043,7 +1138,6 @@ EOD
 				print $fp
 "    <item id=\"$id\" href=\"$file\" media-type=\"$mime_type\"/>\n";
 				push @items, [ $id, $file, $i ];
-				insert();
 			}
 			else {
 				my $svgfile = sprintf("$outdir/%05d.svg", $i);
@@ -1063,10 +1157,12 @@ EOD
 "    <item id=\"$id\" href=\"$file\" media-type=\"image/svg+xml\"/>\n";
 					}
 					push @items, [ $id, $file, $i ];
-					insert();
 				}
 			}
+			insert();
 		}
+		$i = 99999;
+		insert();
 
 		# EPUB2.0互換ではNCXを参照
 		my $ncx = '';
