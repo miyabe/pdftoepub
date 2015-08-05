@@ -70,7 +70,7 @@ make
 [ID]/m_[ID].xml -サンプル属性XML
 [ID]/ins -挿し込みデータ
 
-・pdftoepub.pl ディレクトリ名 出力先 [-view-height ビュー高さ] [-dpi 解像度] [-aaVector yes|no] [-program poppler|mupdf [pages]] [-quality 画質] [-png] [-epub2] [-kobo] [-imagespine] [-skipBlankPage] [-sample] [-no-initial-scale] [-thumbnail-height サムネイル高さ]
+・pdftoepub.pl ディレクトリ名 出力先 [-view-height ビュー高さ] [-dpi 解像度] [-aaVector yes|no] [-program poppler|mupdf [pages]] [-quality 画質] [-png] [-epub2] [-kobo] [-ibooks] [-kindle] [-imagespine] [-skipBlankPage] [-sample] [-no-initial-scale] [-thumbnail-height サムネイル高さ]
 PDFからEPUBを生成するPerlスクリプトです。
 ディレクトリ名の最後に / を付けると、さらにディレクトリ中にある複数のディレクトリを処理します。
 
@@ -104,6 +104,10 @@ popplerまたはmupdfのいずれかを指定可能です。デフォルトはpo
 -epub2を付けるとEPUB2互換形式で出力します。各ページはXHTMLになります。
 
 -koboを付けると画像の中寄せ位置調整をしません。
+
+-ibooksを付けるとOPFに<meta property="ibooks:binding">false</meta>タグを加えます。
+
+-kindleを付けるとXHTMLに<meta name="primary-writing-mode" content="horizontal-rl"/>タグを加えます（-epub2出力かnav.xhtmlのみ）。
 
 -imagespineを付けると、各ページが画像になります。これはEPUBとしては不正なものになります。
 

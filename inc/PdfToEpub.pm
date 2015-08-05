@@ -125,12 +125,21 @@ sub wrapsvg {
 	else {
 		$viewport = "width=$width, height=$height, initial-scale=1.0";
 	}
+	
+	our $kindle;
 	print $fp <<"EOD";
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE html>
 <html lang="ja-JP" xml:lang="ja-JP" xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta charset="UTF-8" />
+EOD
+if ($kindle) {
+	print $fp <<"EOD";
+    <meta name="primary-writing-mode" content="horizontal-rl"/>
+EOD
+}
+	print $fp <<"EOD";
     <meta name="viewport" content="$viewport" />
     <title>$name</title>
     <link rel="stylesheet" href="Stylesheet.css" type="text/css"/>
@@ -170,6 +179,10 @@ sub transcode {
 	my $epub2      = 0;
 	# Kobo向け
 	my $kobo      = 0;
+	# iBooks向け
+	my $ibooks      = 0;
+	# Kindle向け
+	our $kindle      = 0;
 	# 画像直接参照
 	our $imagespine = 0;
 	# ブランクページの削除
@@ -224,6 +237,12 @@ sub transcode {
 		}
 		elsif ( $ARGV[$i] eq '-kobo' ) {
 			$kobo = 1;
+		}
+		elsif ( $ARGV[$i] eq '-ibooks' ) {
+			$ibooks = 1;
+		}
+		elsif ( $ARGV[$i] eq '-kindle' ) {
+			$kindle = 1;
 		}
 		elsif ( $ARGV[$i] eq '-imagespine' ) {
 			$imagespine = 1;
@@ -407,6 +426,13 @@ sub transcode {
       xmlns:epub="http://www.idpf.org/2007/ops">
   <head>
     <meta charset="UTF-8" />
+EOD
+if ($kindle) {
+	print $fp <<"EOD";
+    <meta name="primary-writing-mode" content="horizontal-rl"/>
+EOD
+}
+	print $fp <<"EOD";
     <title>$name</title>
     <link rel="stylesheet" href="tocstyle/tocstyle.css" type="text/css"/>
   </head>
@@ -919,6 +945,11 @@ EOD
          rendition: http://www.idpf.org/vocab/rendition/#
 EOD
 		}
+		if ($ibooks) {
+			print $fp <<"EOD";
+         ibooks: http://vocabulary.itunes.apple.com/rdf/ibooks/vocabulary-extensions-1.0/
+EOD
+		}
 		print $fp <<"EOD";
          prs: http://xmlns.sony.net/e-book/prs/"
          version="3.0"
@@ -955,6 +986,11 @@ EOD
     <meta property="rendition:layout">pre-paginated</meta>
     <meta property="rendition:orientation">$orientation</meta>
     <meta property="rendition:spread">auto</meta>
+EOD
+		}
+		if ($ibooks) {
+			print $fp <<"EOD";
+    <meta property="ibooks:binding">false</meta>
 EOD
 		}
 		print $fp <<"EOD";
