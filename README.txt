@@ -65,12 +65,21 @@ make
 
 あらかじめ、次のディレクトリ構成を準備しておいてください
 [ID]は書誌IDです。
-[ID]/[ID].pdf -変換対象のPDF
 [ID]/[ID].xml -書誌データXML
 [ID]/m_[ID].xml -サンプル属性XML
 [ID]/ins -挿し込みデータ
 
-・pdftoepub.pl ディレクトリ名 出力先 [-view-height ビュー高さ] [-dpi 解像度] [-aaVector yes|no] [-program poppler|mupdf [pages]] [-quality 画質] [-png] [-epub2] [-kobo] [-ibooks] [-kindle] [-imagespine] [-skipBlankPage] [-sample] [-no-initial-scale] [-thumbnail-height サムネイル高さ]
+変換対象のPDFは次の２通りの配置方法があります。
+
+全てのページを１つのPDFにまとめる場合：
+[ID]/[ID].pdf
+
+１ページ１PDFに分割する場合：
+[ID]/magazine/00001.pdf
+[ID]/magazine/00002.pdf
+...
+
+・pdftoepub.pl ディレクトリ名 出力先 [-view-height ビュー高さ] [-dpi 解像度] [-aaVector yes|no] [-program poppler|mupdf [pages]] [-quality 画質] [-png] [-epub2] [-kobo] [-ibooks] [-kindle] [-imagespine] [-skipBlankPage] [-sample] [-no-initial-scale] [-thumbnail-height サムネイル高さ] [-extractcover]
 PDFからEPUBを生成するPerlスクリプトです。
 ディレクトリ名の最後に / を付けると、さらにディレクトリ中にある複数のディレクトリを処理します。
 
@@ -124,6 +133,9 @@ BlankImage/blank.pdfがあれば、それをブランクページとして使い
 -previewPageOrigin 0をつけると、XMLのPreviewPageが0ベースとなります。デフォルトでは1ベースです。
 
 -forceintを付けると、SVGのrectタグの座標値を四捨五入して整数にします。
+
+-extractcoverを付けると、PDFの最初のページをカバーとして扱い、PDFの２ページ目が本文の１ページとなります。
+このオプションは全てのページを１つのPDFにまとめる場合だけ有効です。
 
 戻り値：単一ファイルを処理する場合　成功した場合 0 エラー発生時 -1
 ディレクトリを指定した場合は常に 0　が戻ります

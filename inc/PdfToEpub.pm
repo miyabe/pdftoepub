@@ -166,31 +166,46 @@ sub transcode {
 
 	# 画面の高さ
 	our $view_height = 2068;
+	
 	# 解像度
 	our $dpi = 188;
 
 	# 画質
 	our $default_qf  = 98;
+	
 	# 文字以外のアンチエイリアス
 	our $aaVector    = 'yes';
+	
 	# 画像タイプ
 	our $imageSuffix = 'jpg';
+	
 	# EPUB2互換
 	my $epub2      = 0;
+	
 	# Kobo向け
 	my $kobo      = 0;
+	
 	# iBooks向け
 	my $ibooks      = 0;
+	
 	# Kindle向け
 	our $kindle      = 0;
+	
 	# 画像直接参照
 	our $imagespine = 0;
+	
 	# ブランクページの削除
 	my $skipBlankPage = 0;
+	
 	# サンプルのみ変換
 	my $sample = 0;
+	
+	# 単一PDFで最初のページだけカバーにする
+	my $extractcover = 0;
+	
 	# initial-scaleを付けない
 	our $noInitialScale = 0;
+	
 	# SVG中で使う数値を整数にする
 	our $forceint = 0;
 	
@@ -263,6 +278,9 @@ sub transcode {
 			if ($ARGV[ ++$i ] eq '0') {
 				$previewPageOrigin = 0;
 			}
+		}
+		elsif ( $ARGV[$i] eq '-extractcover' ) {
+			$extractcover = 1;
 		}
 	}
 
@@ -601,6 +619,8 @@ EOD
 		my ( $w, $h );
 		if ( -d $pdfdir ) {
 			# ページ分割されたPDF
+			$extractcover = 0;
+			
 			opendir $dh, "$pdfdir";
 			my @files = grep { /^\d{5}\.pdf$/ } readdir $dh;
 			closedir($dh);
@@ -698,6 +718,9 @@ EOD
 				while (<CMD>) {
 				    if (/^PAGE: ([0-9]+)$/) {
 				    	$i = $1;
+						if ($extractcover) {
+							--$i;
+						}
 				    	@{$mapping{$i}} = ();
 				    }
 				    elsif (/^LINK: ([\-\.0-9]+) ([\-\.0-9]+) ([\-\.0-9]+) ([\-\.0-9]+) URI: (.+)$/) {
@@ -741,7 +764,14 @@ EOD
 					}
 				}
 				else {
-					Utils::pdftoimage($p, "$pdfdir", "$outdir/", $opts, $i);
+					my $page = $i;
+					if ($extractcover) {
+						++$page;
+					}
+					Utils::pdftoimage($p, "$pdfdir", "$outdir/", $opts, $page);
+					if ($extractcover) {
+						move sprintf( "$outdir/%05d.$suffix", $page ), sprintf( "$outdir/%05d.$suffix", $page - 1 );
+					}
 				}
 				if ($?) {
 					print STDERR
@@ -759,12 +789,18 @@ EOD
 		
 		# カバー
 		my ( $viewHeight, $suffix, $opts ) = imageOptions(0);
-		if ( -f "$dir/cover.pdf" ) {
+		if ( -f "$dir/cover.pdf" || $extractcover ) {
 			my $p = $pageToProgram{0};
 			if (!$p) {
 				$p = $program;
 			}
-			Utils::pdftoimage($p, "$dir/cover.pdf", "$outdir/00000.$suffix", $opts);
+			if ($extractcover) {
+				Utils::pdftoimage($p, $pdfdir, "$outdir/cover", $opts, 1);
+				move "$outdir/cover00001.$suffix", "$outdir/00000.$suffix";
+			}
+			else {
+				Utils::pdftoimage($p, "$dir/cover.pdf", "$outdir/00000.$suffix", $opts);
+			}
 			if ($?) {
 				print STDERR
 "$dir: cover.pdf を画像に変換する際にエラーが発生しました。(3)\n";
@@ -773,21 +809,23 @@ EOD
 			( $w, $h ) = imgsize("$outdir/00000.$suffix");
 			
 			# リンクの抽出
-			open(CMD, "$pdftomapping $dir/cover.pdf |");
-			{
-				while (<CMD>) {
-				    if (/^PAGE: ([0-9]+)$/) {
-				    	if ($1 != 1) {
-				    		last;
-				    	}
-				    	@{$mapping{0}} = ();
-				    }
-				    elsif (/^LINK: ([\-\.0-9]+) ([\-\.0-9]+) ([\-\.0-9]+) ([\-\.0-9]+) URI: (.+)$/) {
-				    	push @{$mapping{0}}, [$1, $2, $3, $4, $5];
-				    }
+			if (!$extractcover) {
+				open(CMD, "$pdftomapping $dir/cover.pdf |");
+				{
+					while (<CMD>) {
+					    if (/^PAGE: ([0-9]+)$/) {
+					    	if ($1 != 1) {
+					    		last;
+					    	}
+					    	@{$mapping{0}} = ();
+					    }
+					    elsif (/^LINK: ([\-\.0-9]+) ([\-\.0-9]+) ([\-\.0-9]+) ([\-\.0-9]+) URI: (.+)$/) {
+					    	push @{$mapping{0}}, [$1, $2, $3, $4, $5];
+					    }
+					}
 				}
+				close(CMD);
 			}
-			close(CMD);
 		}
 		elsif ( -f "$dir/cover.jpg" ) {
 			my $image = Image::Magick->new;

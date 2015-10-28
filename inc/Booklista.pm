@@ -33,6 +33,9 @@ sub generate {
 	# 変換に使うプログラム
 	our $program = 'poppler';
 	
+	# 単一PDFで最初のページだけカバーにする
+	our $extractcover = 0;
+	
 	if (! -f $metafile1) {
 		print "$dir: メタ情報XMLファイル ($contentsID.xml) がありません。\n";
 		return 0;
@@ -59,6 +62,9 @@ sub generate {
 				}
 			}
 		}
+		elsif ( $ARGV[$i] eq '-extractcover' ) {
+			$extractcover = 1;
+		}
 	}
 		
 	mkdir $workdir;
@@ -82,17 +88,35 @@ sub generate {
 		$opts{suffix} = 'jpg';
 		my $pdf = "$dir/$contentsID.pdf";
 		if (-f $pdf) {
-			if ($startPage == -1) {
-				Utils::pdftoimage($program, $pdf, "$outdir/", \%opts, -1);
+			# 単一のPDF
+			
+			if ($extractcover) {
+				if ($startPage == -1) {
+					Utils::pdftoimage($program, $pdf, "$outdir/", \%opts, 2, -1);
+				}
+				else {
+					Utils::pdftoimage($program, $pdf, "$outdir/", \%opts, $startPage == 0 ? 1 : $startPage + 1, $endPage + 1);
+				}
 			}
 			else {
-				Utils::pdftoimage($program, $pdf, "$outdir/", \%opts, $startPage == 0 ? 1 : $startPage, $endPage);
+				if ($startPage == -1) {
+					Utils::pdftoimage($program, $pdf, "$outdir/", \%opts, -1);
+				}
+				else {
+					Utils::pdftoimage($program, $pdf, "$outdir/", \%opts, $startPage == 0 ? 1 : $startPage, $endPage);
+				}
 			}
 			if ($startPage == -1) {
 				$startPage = 1;
 			}
 			for (my $i = $startPage; ; ++$i) {
-				my $file = sprintf("$outdir/%05d.jpg", $i);
+				my $file;
+				if ($extractcover) {
+					$file = sprintf("$outdir/%05d.jpg", $i + 1);
+				}
+				else {
+					$file = sprintf("$outdir/%05d.jpg", $i);
+				}
 				if (!(-f $file)) {
 					last;
 				}
@@ -137,6 +161,7 @@ sub generate {
 	
 	$sampleType = "t";
 	if (-d $pdfdir) {
+		# ページ分割されたPDF
 		my $dh;
 		opendir($dh, $pdfdir);
 		my @files = sort grep {/^\d{5}\.pdf$/} readdir($dh);
@@ -148,6 +173,7 @@ sub generate {
 		outputSample($dir, $contentsID, $sampleType, $startPage, $endPage);
 	}
 	else {
+		# 単一のPDF
 		outputSample($dir, $contentsID, $sampleType, -1, -1);
 	}
 	
