@@ -68,6 +68,7 @@ make
 [ID]/[ID].xml -書誌データXML
 [ID]/m_[ID].xml -サンプル属性XML
 [ID]/ins -挿し込みデータ
+[ID]/extra -追加データ
 
 変換対象のPDFは次の２通りの配置方法があります。
 
@@ -79,7 +80,10 @@ make
 [ID]/magazine/00002.pdf
 ...
 
-・pdftoepub.pl ディレクトリ名 出力先 [-view-height ビュー高さ] [-dpi 解像度] [-aaVector yes|no] [-program poppler|mupdf [pages]] [-quality 画質] [-png] [-epub2] [-kobo] [-ibooks] [-kindle] [-imagespine] [-skipBlankPage] [-sample] [-no-initial-scale] [-thumbnail-height サムネイル高さ] [-extractcover]
+・pdftoepub.pl ディレクトリ名 出力先 [-view-height ビュー高さ] [-dpi 解像度] [-aaVector yes|no] [-program poppler|mupdf [pages]] \
+[-quality 画質] [-png] [-epub2] [-kobo] [-ibooks] [-kindle] [-imagespine] [-skipBlankPage] [-sample] [-no-initial-scale] \
+[-thumbnail-height サムネイル高さ] [-extractcover] [-cover-in-toc] 
+
 PDFからEPUBを生成するPerlスクリプトです。
 ディレクトリ名の最後に / を付けると、さらにディレクトリ中にある複数のディレクトリを処理します。
 
@@ -90,6 +94,10 @@ EPUBに挿し込むページは ページ番号(5桁)-通し番号(5桁)/main.ht
 表紙の前に挿入する場合は -0001-00001/main.html のようにします。
 末尾に挿入する場合は 99999-00001/main.html のようにします。
 挿し込むページをPDFで配置する場合は、PDFを add_00001-00001.pdf のように配置してください。PDFが複数ページの場合は、複数ページが挿入されます。
+
+[ID]/extra内にはPDFに追加で格納するファイルを入れてください。
+サポートするファイルは音声（.mp3）です。
+extra直下のデータがepubのアーカイブのルートの直下に格納されます。
 
 -view-height, -aaVectorオプションはコマンドラインの最後に付けて下さい。
 
@@ -136,6 +144,9 @@ BlankImage/blank.pdfがあれば、それをブランクページとして使い
 
 -extractcoverを付けると、PDFの最初のページをカバーとして扱い、PDFの２ページ目が本文の１ページとなります。
 このオプションは全てのページを１つのPDFにまとめる場合だけ有効です。
+
+-cover-in-tocを付けると、表紙を「表紙」という名前で目次の先頭に入れます。
+書誌データXMLにStartPageが1の目次項目が既にある場合は何もしません。
 
 戻り値：単一ファイルを処理する場合　成功した場合 0 エラー発生時 -1
 ディレクトリを指定した場合は常に 0　が戻ります

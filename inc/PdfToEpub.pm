@@ -203,6 +203,9 @@ sub transcode {
 	# 単一PDFで最初のページだけカバーにする
 	my $extractcover = 0;
 	
+	# 表紙を「表紙」という名前で目次の先頭に入れる
+	my $coverInToc = 0;
+	
 	# initial-scaleを付けない
 	our $noInitialScale = 0;
 	
@@ -281,6 +284,9 @@ sub transcode {
 		}
 		elsif ( $ARGV[$i] eq '-extractcover' ) {
 			$extractcover = 1;
+		}
+		elsif ( $ARGV[$i] eq '-cover-in-toc' ) {
+			$coverInToc = 1;
 		}
 	}
 
@@ -458,6 +464,25 @@ EOD
   <nav epub:type="toc" id="toc">
     <ol>
 EOD
+
+		if ($coverInToc && !$xp->exists( "/Content/ContentInfo/IndexList/Index[StartPage/text()='1']" )) {
+			# 表紙を目次に入れる
+			
+			my $file;
+			if ($imagespine) {
+				$file = "00000.$imageSuffix";
+			}
+			elsif ($epub2) {
+				$file = "00000.xhtml";
+			}
+			else {
+				$file = "00000.svg";
+			}
+			print $fp <<"EOD";
+		<li><a href="$file">表紙</a></li>
+EOD
+		}
+		
 		foreach my $index ( $indexList->get_nodelist ) {
 			my $title = Utils::trim( $xp->findvalue( "Title/text()", $index )->value );
 			$title = xmlescape( $title );
@@ -489,6 +514,8 @@ EOD
 
 		# toc.ncx
 		if ($epub2) {
+			# EPub2目次
+			
 			open( $fp, "> $outdir/toc.ncx" );
 			binmode $fp, ":utf8";
 			print $fp <<"EOD";
@@ -506,6 +533,26 @@ EOD
   <navMap>
 EOD
 			my $i = 0;
+			if ($coverInToc && !$xp->exists( "/Content/ContentInfo/IndexList/Index[StartPage/text()='1']" )) {
+				# 表紙を目次に入れる
+				
+				my $file;
+				if ($imagespine) {
+					$file = "00000.$imageSuffix";
+				}
+				else {
+					$file = "00000.xhtml";
+				}
+				++$i;
+				print $fp <<"EOD";
+	<navPoint id="t0" playOrder="$i">
+	  <navLabel>
+        <text>表紙</text>
+      </navLabel>
+      <content src="$file"/>
+    </navPoint>
+EOD
+			}
 			foreach my $index ( $indexList->get_nodelist ) {
 				my $title =
 				  Utils::trim( $xp->findvalue( "Title/text()", $index )->value );
