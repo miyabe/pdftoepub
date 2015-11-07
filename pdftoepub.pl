@@ -4,6 +4,7 @@ use File::Basename;
 use lib dirname(__FILE__).'/inc';
 use PdfToEpub;
 use Booklista;
+use Utils;
 
 require Exporter;
 @ISA	= qw(Exporter);
@@ -29,6 +30,9 @@ sub process {
 
 	return $ret;
 }
+
+Utils::status("処理を開始しました");
+
 if ($src =~ /^.+\/$/) {
 	my $dir;
 	opendir($dir, $src);
@@ -52,4 +56,6 @@ else {
 		exit(-1);
 	}
 }
+
+Utils::deletestatus();
 exit(0);

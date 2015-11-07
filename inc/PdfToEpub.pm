@@ -218,6 +218,7 @@ sub transcode {
 	our $program = 'poppler';
 	our %pageToProgram = ();
 	
+	Utils::status('EPubを生成します');
 	for ( my $i = 0 ; $i < @ARGV ; ++$i ) {
 		if ( $ARGV[$i] eq '-view-height' ) {
 			$view_height = $ARGV[ ++$i ] + 0;
@@ -666,6 +667,7 @@ EOD
 		my ( $w, $h );
 		if ( -d $pdfdir ) {
 			# ページ分割されたPDF
+			Utils::status('ページ分割されたPDFを処理します');
 			$extractcover = 0;
 			
 			opendir $dh, "$pdfdir";
@@ -685,6 +687,8 @@ EOD
 				if ($sample && !$samplePages{$num + 0}) {
 					next;
 				}
+				
+				Utils::status($num);
 				
 				# リンクの抽出
 				open(CMD, "$pdftomapping $pdfdir/$file |");
@@ -758,6 +762,7 @@ EOD
 		else {
 			# 単一のPDF
 			
+			Utils::status('ページ分割されていないPDFを処理します');
 			# リンクの抽出
 			open(CMD, "$pdftomapping $pdfdir |");
 			{
@@ -793,6 +798,8 @@ EOD
 					}
 					next;
 				}
+				
+				Utils::status($i);
 				
 				my ( $viewHeight, $suffix, $opts ) = imageOptions($i);
 				my $p = $pageToProgram{$i};

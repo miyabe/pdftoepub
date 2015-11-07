@@ -41,6 +41,8 @@ sub generate {
 		return 0;
 	}
 	
+	Utils::status('サンプル画像を生成します');
+	
 	my $thumbnail_height = 480;
 	for ( my $i = 0 ; $i < @ARGV ; ++$i ) {
 		if ( $ARGV[$i] eq '-thumbnail-height' ) {
@@ -90,6 +92,7 @@ sub generate {
 		if (-f $pdf) {
 			# 単一のPDF
 			
+			Utils::status('ページ分割されていないPDFを処理します');
 			if ($extractcover) {
 				if ($startPage == -1) {
 					Utils::pdftoimage($program, $pdf, "$outdir/", \%opts, 2, -1);
@@ -125,7 +128,9 @@ sub generate {
 			return;
 		}
 		
+		Utils::status('ページ分割されたPDFを処理します');
 		do {
+			Utils::status($startPage);
 			$pdf = sprintf("$pdfdir/%05d.pdf", $startPage);
 			if (-f $pdf) {
 				Utils::pdftoimage($program, $pdf, "$outdir/", \%opts, -1);
@@ -142,6 +147,8 @@ sub generate {
 	my ($sampleType, $startPage, $endPage);
 	my $xp = XML::XPath->new(filename => $metafile1);
 	my $samples = $xp->find("/Content/ContentInfo/PreviewPageList/PreviewPage");
+	
+	Utils::status('ちび見を生成します');
 	$sampleType = "s";
 	foreach my $node ($samples->get_nodelist) {
 		$xp = XML::XPath->new(context => $node);
@@ -160,6 +167,7 @@ sub generate {
 	}
 	
 	$sampleType = "t";
+	Utils::status('ちら見を生成します');
 	if (-d $pdfdir) {
 		# ページ分割されたPDF
 		my $dh;

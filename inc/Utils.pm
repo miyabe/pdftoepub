@@ -14,6 +14,21 @@ sub trim {
 	return $val;
 }
 
+# 現在の状態を一時ファイルに書き出し
+sub status($) {
+	my $text = shift;
+	my $fp;
+	open( $fp, ">> /tmp/pdftoepub-$$" );
+	binmode $fp, ":utf8";
+	print $fp "$text\n";
+	close($fp);
+	print "$text\n";
+}
+
+sub deletestatus {
+	unlink "/tmp/pdftoepub-$$";
+}
+
 # PDF画像変換
 sub pdftoimage($$$%;$$) {
 	my $program = shift;
