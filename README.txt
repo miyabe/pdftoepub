@@ -4,7 +4,8 @@
 apt-get install git pkg-config automake libtool zlib1g-dev bzip2 libpng12-dev g++
 apt-get install libxext-dev libcurl4-openssl-dev imagemagick
 apt-get install libfreetype6-dev libglib2.0-dev poppler-data pango-graphite libjpeg-dev liblcms2-dev libfontconfig1-dev gettext
-apt-get install libxml2-dev libgtk2.0-dev libgtk2.0 libpoppler-glib-dev libossp-uuid-perl libarchive-zip-perl libxml-xpath-perl libimage-size-perl perlmagick php5-imagick php-pear openjdk-7-jre
+apt-get install libxml2-dev libgtk2.0-dev libgtk2.0 libpoppler-glib-dev libossp-uuid-perl libarchive-zip-perl libxml-xpath-perl libimage-size-perl perlmagick
+apt-get install libhtml-html5-entities-perl php5-imagick php-pear openjdk-7-jre
 pear install Archive_Tar
 
 # 以下のコマンドでGitによりpoppler, freetype2, mupdf, pdftoepubのソースを取得します。
@@ -68,7 +69,8 @@ make
 [ID]/[ID].xml -書誌データXML
 [ID]/m_[ID].xml -サンプル属性XML
 [ID]/ins -挿し込みデータ
-[ID]/extra -追加データ
+[ID]/appendix -追加データ
+[ID]/textlinks.txt -リンクの設定
 
 変換対象のPDFは次の２通りの配置方法があります。
 
@@ -95,9 +97,15 @@ EPUBに挿し込むページは ページ番号(5桁)-通し番号(5桁)/main.ht
 末尾に挿入する場合は 99999-00001/main.html のようにします。
 挿し込むページをPDFで配置する場合は、PDFを add_00001-00001.pdf のように配置してください。PDFが複数ページの場合は、複数ページが挿入されます。
 
-[ID]/extra内にはPDFに追加で格納するファイルを入れてください。
-サポートするファイルは音声（.mp3）です。
-extra直下のデータがepubのアーカイブのルートの直下に格納されます。
+[ID]/appendix内にはPDFに追加で格納するファイルを入れてください。
+サポートするファイルは音声（.mp3, .mp4）です。
+appendix直下のデータがepubのアーカイブのルートの直下に格納されます。
+
+[ID]/textlinks.txtは
+ページ番号,テキスト,URL
+という形式のUTF-8エンコーディングのCSVで記述してください。
+指定したページの、テキストに一致する部分にURLに対するリンクを設定します。
+ページ番号は、分割されていないPDFに対しては必ず1から開始します。
 
 実行中に /tmp/pdftoepub-[プロセスID] というファイルが生成されます。正常終了した時点で、このファイルは削除されます。
 エラーなど異常終了した場合はこのファイルは残り続けます。

@@ -4,6 +4,7 @@ use File::Basename;
 use File::Path;
 use File::Temp;
 use File::Copy;
+use File::Copy::Recursive;
 use Data::UUID;
 use Archive::Zip;
 use XML::XPath;
@@ -31,10 +32,12 @@ sub xmlescape {
 }
 
 # 画像をSVGでくるむ
+# (入力ファイル, 出力ファイル, 幅, 高さ, 左ページフラグ, koboフラグ, ハイパーリンク)
 sub wrapimage {
 	my ( $infile, $outfile, $w, $h, $left, $kobo, @links ) = @_;
+	
+	# 画像のサイズを求める
 	my ( $ww, $hh ) = imgsize($infile);
-
 	if ( $hh != $h ) {
 		$ww *= $h / $hh;
 		$ww = int($ww);
@@ -88,7 +91,7 @@ EOD
 	}
 	
 print $fp <<"EOD";
-  <a xlink:href="$href" target="_blank"><rect x="$lx" y="$ly" width="$lw" height="$lh" stroke="transparent" fill="transparent"/></a>
+  <a xlink:title="LINK" xlink:href="$href" target="_blank"><rect x="$lx" y="$ly" width="$lw" height="$lh" stroke="transparent" fill="transparent"/></a>
 EOD
 	}
 
@@ -302,6 +305,8 @@ sub transcode {
 	my $metafile  = "$dir/$contentsID.xml";
 	my $staticdir = "$base/static";
 	my $insertdir = "$dir/ins";
+	my $textlinks = "$dir/textlinks.txt";
+	my $appendixdir = "$dir/appendix";
 	my $workdir   = "$dir/work";
 	our $outdir    = "$workdir/epub";
 	my $outfile   = "$workdir/$contentsID" . "_eEPUB3.epub";
@@ -669,7 +674,7 @@ EOD
 			# ページ分割されたPDF
 			Utils::status('ページ分割されたPDFを処理します');
 			$extractcover = 0;
-			
+
 			opendir $dh, "$pdfdir";
 			my @files = grep { /^\d{5}\.pdf$/ } readdir $dh;
 			closedir($dh);
@@ -718,6 +723,28 @@ EOD
 "$dir: $file を画像に変換する際にエラーが発生しました。(1)\n";
 				}
 			}
+			
+			# 音声へのリンク
+			if ( -f $textlinks ) {
+				open(LINKS, "< $textlinks");
+				binmode LINKS, ":utf8";
+				while(my $line = <LINKS>) {
+					chomp($line);
+    				my ($page, $needle, $link) = split(/,/, $line, 3);
+    				my $file = sprintf( "$pdfdir/%05d.pdf", $page );
+					my ($text, @bounds) = Utils::pdftotext($file, 1);
+					my $pos = 0;
+					while( (my $ix = index $text, $needle, $pos) != -1 ) {
+						my $strlen = length($needle);
+						for ( my $i = 0; $i < $strlen; ++$i) {
+							push @{$mapping{$page}}, [$bounds[$ix + $i][0], $bounds[$ix + $i][1], $bounds[$ix + $i][2], $bounds[$ix + $i][3], $link];
+						}
+						$pos += $strlen;
+					}
+				}
+				close(LINKS);
+			}
+			
 			if (! $skipBlankPage) {
 				foreach my $num ( keys( %blankPages ) ) {
 					if ($sample && !$samplePages{$num}) {
@@ -763,6 +790,7 @@ EOD
 			# 単一のPDF
 			
 			Utils::status('ページ分割されていないPDFを処理します');
+			
 			# リンクの抽出
 			open(CMD, "$pdftomapping $pdfdir |");
 			{
@@ -781,6 +809,29 @@ EOD
 				}
 			}
 			close(CMD);
+			
+			# 音声へのリンク
+			if ( -f $textlinks ) {
+				open(LINKS, "< $textlinks");
+				binmode LINKS, ":utf8";
+				while(my $line = <LINKS>) {
+					chomp($line);
+    				my ($page, $needle, $link) = split(/,/, $line, 3);
+					my ($text, @bounds) = Utils::pdftotext($pdfdir, $page);
+					if ($extractcover) {
+						--$page;
+					}
+					my $pos = 0;
+					while( (my $ix = index $text, $needle, $pos) != -1 ) {
+						my $strlen = length($needle);
+						for ( my $i = 0; $i < $strlen; ++$i) {
+							push @{$mapping{$page}}, [$bounds[$ix + $i][0], $bounds[$ix + $i][1], $bounds[$ix + $i][2], $bounds[$ix + $i][3], $link];
+						}
+						$pos += $strlen;
+					}
+				}
+				close(LINKS);
+			}
 
 			for ( my $i = 1 ; ; ++$i ) {
 				# ブランクページは飛ばす
@@ -893,8 +944,20 @@ EOD
 			$image->Write("$outdir/00000.jpg");
 		}
 		
+		# 音声ファイル等のコピー
+		if ( -e $appendixdir ) {
+			opendir $dh, $appendixdir;
+			while (my $file = readdir $dh) {
+				if ( $file =~ m/^(\.|\.\.)$/g ) {
+					next;
+				}
+				File::Copy::Recursive::rcopy "$appendixdir/$file", "$outdir/$file";
+			}
+			closedir($dh);
+		}
+		
 		# 挿入するページ
-		if ( -e $insertdir) {
+		if ( -e $insertdir ) {
 			my ( $viewHeight, $suffix, $opts ) = imageOptions(-1);
 			opendir $dh, $insertdir;
 			@files = grep { /^add_\-?[0-9]+\-[0-9]+\.pdf$/ } readdir $dh;
@@ -1157,6 +1220,12 @@ EOD
 			}
 			elsif (/^.*\.otf$/) {
 				print $fp "font/otf";
+			}
+			elsif (/^.*\.mp4$/) {
+				print $fp "audio/mp4";
+			}
+			elsif (/^.*\.mp3$/) {
+				print $fp "audio/mpeg";
 			}
 			print $fp "\"";
 			# カバーページ

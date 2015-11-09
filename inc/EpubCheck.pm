@@ -13,7 +13,7 @@ sub epub_check {
 	my $base = dirname(__FILE__)."/java";
 	
 	my $tmp = tmpnam();
-	my $status = system "java -jar \"$base/epubcheck-3.0-RC-1.jar\" $file 2> $tmp";
+	my $status = system "java -jar \"$base/epubcheck.jar\" $file 2> $tmp";
 	
 	my $fp;
 	open $fp, "< $tmp";

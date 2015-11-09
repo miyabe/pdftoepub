@@ -92,7 +92,7 @@ sub generate {
 		if (-f $pdf) {
 			# 単一のPDF
 			
-			Utils::status('ページ分割されていないPDFを処理します');
+			Utils::status("ページ分割されていないPDFを処理します($startPage - $endPage)");
 			if ($extractcover) {
 				if ($startPage == -1) {
 					Utils::pdftoimage($program, $pdf, "$outdir/", \%opts, 2, -1);
@@ -128,7 +128,7 @@ sub generate {
 			return;
 		}
 		
-		Utils::status('ページ分割されたPDFを処理します');
+		Utils::status("ページ分割されたPDFを処理します($startPage - $endPage)");
 		do {
 			Utils::status($startPage);
 			$pdf = sprintf("$pdfdir/%05d.pdf", $startPage);

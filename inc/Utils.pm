@@ -1,5 +1,6 @@
 package Utils;
 use File::Basename;
+use HTML::HTML5::Entities;
 
 require Exporter;
 @ISA	= qw(Exporter);
@@ -27,6 +28,36 @@ sub status($) {
 
 sub deletestatus {
 	unlink "/tmp/pdftoepub-$$";
+}
+
+# PDFテキスト抽出
+sub pdftotext($$) {
+	my $inFile = shift;
+	my $page = shift;
+	
+	my $text = '';
+
+	my $mudraw = dirname(__FILE__)."/../../mupdf/build/debug/mudraw";
+	my @res = `$mudraw -ttt $inFile $page 2>&1`;
+	my @bounds = ();
+	my ($width, $height);
+	foreach my $line (@res) {
+		if ($line =~ /^<page width="([0-9\.]+)" height="([0-9\.]+)">$/) {
+			$width = $1;
+			$height = $2;
+		}
+		if ($line =~ /^<char bbox="([0-9\.]+) ([0-9\.]+) ([0-9\.]+) ([0-9\.]+)" x=".*" y=".*" c="(.*)"\/>$/) {
+			my ($x, $y, $w, $h) = ($1, $2, $3, $4);
+			$w = ($w - $x) / $width;
+			$h = ($h - $y) / $height;
+			$x = $x / $width;
+			$y = $y / $height;
+			my $char = decode_entities($5);
+			$text .= $char;
+			push @bounds, [$x, $y, $w, $h];
+		}
+	}
+	return ($text, @bounds);
 }
 
 # PDF画像変換
