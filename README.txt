@@ -1,12 +1,22 @@
 ﻿■ ビルド方法
 # Debian wheezy でビルド・動作を確認しています
 
-apt-get install git pkg-config automake libtool zlib1g-dev bzip2 libpng12-dev g++
-apt-get install libxext-dev libcurl4-openssl-dev imagemagick
-apt-get install libfreetype6-dev libglib2.0-dev poppler-data pango-graphite libjpeg-dev liblcms2-dev libfontconfig1-dev gettext
-apt-get install libxml2-dev libgtk2.0-dev libgtk2.0 libpoppler-glib-dev libossp-uuid-perl libarchive-zip-perl libxml-xpath-perl libimage-size-perl perlmagick
-apt-get install libhtml-html5-entities-perl php5-imagick php-pear openjdk-7-jre
+# Packages
+
+apt-get install git pkg-config automake libtool bzip2 autoconf gettext make g++
+
+apt-get install libxext-dev libcurl4-openssl-dev imagemagick libmagickcore-dev zlib1g-dev libpng12-dev libfreetype6-dev libglib2.0-dev poppler-data pango-graphite libjpeg-dev libxrender-dev libfontconfig1-dev libopenjpeg-dev libxcb-render-util0-dev libxcb-render0-dev libpoppler-glib-dev libxml2-dev libgtk2.0-dev libgtk2.0 liblcms2-dev libhtml-html5-entities-perl 
+
+apt-get install php5 php5-mysql php5-sybase php5-imagick php-pear php5-dev libssh2-1 libssh2-1-dev
+
 pear install Archive_Tar
+
+apt-get install libossp-uuid-perl libarchive-zip-perl libxml-xpath-perl libimage-size-perl perlmagick uuid-dev 
+cpan install Data::UUID XML::XPath Image::Size Archive::Zip
+
+apt-get install openjdk-7-jre
+
+apt-get install ruby1.9.1 bundler
 
 # 以下のコマンドでGitによりpoppler, freetype2, mupdf, pdftoepubのソースを取得します。
 

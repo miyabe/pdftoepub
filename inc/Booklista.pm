@@ -144,6 +144,7 @@ sub generate {
 			++$startPage;
 		} while ($startPage <= $endPage);
 	}
+    
 	my ($sampleType, $startPage, $endPage);
 	my $xp = XML::XPath->new(filename => $metafile1);
 	my $samples = $xp->find("/Content/ContentInfo/PreviewPageList/PreviewPage");

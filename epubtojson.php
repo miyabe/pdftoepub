@@ -147,7 +147,7 @@ foreach($items as $item) {
 
 # spineの解析
 $itemrefs = $opf->xpath("/opf:package/opf:spine/opf:itemref");
-$pageinfo = array();
+$pagelist = array();
 $href_to_id = array();
 foreach($itemrefs as $itemref) {
 	$idref = $itemref->xpath('@idref');
@@ -231,7 +231,7 @@ foreach($itemrefs as $itemref) {
 			$info['page-spread'] = 'right';
 		}
 	}
-	
+    
 	# ページのスキップ
 	if ($xml) {
 		$n = $i - 1;
@@ -243,8 +243,66 @@ foreach($itemrefs as $itemref) {
 			}
 		}
 	}
-		
-	$pageinfo[] = $info;
+
+    # mark pages that have been worked on
+    $page_list[$i] = $info;
+}
+
+# fill data for skipped pages
+$pages = $xml->xpath("/Content/PageContentList/PageContent");
+foreach($pages as $page) {
+    $page_no = (int) $page->PageNo;
+    $i = $page_no + 1;
+    $id = sprintf('%04d00', $i);
+    $imageid = "{$content_id}_{$id}";
+    if (!array_key_exists($i, $page_list)) {
+        $page_kbn = (int) $page->PageKbn;
+        $info = array('id' => $imageid);
+        if ($page_kbn == 3) { 
+            $info['skippable'] = true;
+        }
+        
+        // determine page spread
+        if ($i > 1) {
+            $prev_page_spread = $page_list[$i - 1]["page-spread"];
+            if ($prev_page_spread === "left") {
+                $info["page-spread"] = "right";
+            }
+            else {
+                $info["page-spread"] = "left";
+            }
+        }
+
+        $page_list[$i] = $info;
+    }
+    
+    echo "debug: page-spread=" . $page_list[$i]["page-spread"] . "\n";
+
+    // check for missing files
+    $imagefile = "$imagedir/{$imageid}".$suffix;
+    echo "debug: imagefile=$imagefile\n";
+    if (!file_exists($imagefile)) {
+        $pair = $i + 1;
+        if ($page_list[$i]["page-spread"] === "left") {
+            $pair = $i - 1;
+        }
+        else if(!array_key_exists($pair, $page_list)) {
+            $pair = $i - 1;
+        }
+        $id = sprintf('%04d00', $pair);
+        $imageid = "{$content_id}_{$id}";
+        $pairfile = realpath("$imagedir/{$imageid}".$suffix);
+
+        echo "convert $pairfile -threshold -1 -alpha off $imagefile\n";
+        exec("convert $pairfile -threshold -1 -alpha off $imagefile");
+    }
+}
+
+// sort page list array
+ksort($page_list);
+$pageinfo = array();
+foreach($page_list as $info) {
+    $pageinfo[] = $info;
 }
 
 # thumbnail.jpg
@@ -260,34 +318,33 @@ if ($cover_image !== NULL) {
 $json['PageNumber'] = count($pageinfo);
 
 # SamplePageRange
-$max = -1;
-if ($xml) {
-	$previewpages = $xml->xpath('/Content/ContentInfo/PreviewPageList/PreviewPage');
-	if (!empty($previewpages)) {
-		foreach ($previewpages as $previewpage) {
-			$startpage = $previewpage->xpath('StartPage/text()');
-			$endpage = $previewpage->xpath('EndPage/text()');
-			$startpage = (int)$startpage[0] + 1;
-			if (empty($endpage)) {
-				$endpage = $startpage;
-			}
-			else {
-				$endpage = (int)$endpage[0] + 1;
-			}
-			$range = $endpage - $startpage;
-			if ($max < $range) {
-				$max = $range;
-				if ($range == 1) {
-					$json['SamplePageRange'] = $startpage;
-				}
-				else {
-					$json['SamplePageRange'] = $startpage.'-'.$endpage;
-				}
-			}
-		}
-	}
-}
-
+#$max = -1;
+#if ($xml) {
+#	$previewpages = $xml->xpath('/Content/ContentInfo/PreviewPageList/PreviewPage');
+#	if (!empty($previewpages)) {
+#		foreach ($previewpages as $previewpage) {
+#			$startpage = $previewpage->xpath('StartPage/text()');
+#   		$endpage = $previewpage->xpath('EndPage/text()');
+#			$startpage = (int)$startpage[0] + 1;
+#			if (empty($endpage)) {
+#				$endpage = $startpage;
+#			}
+#			else {
+#				$endpage = (int)$endpage[0] + 1;
+#			}
+#			$range = $endpage - $startpage;
+#			if ($max < $range) {
+#				$max = $range;
+#				if ($range == 1) {
+#					$json['SamplePageRange'] = $startpage;
+#				}
+#				else {
+#					$json['SamplePageRange'] = $startpage.'-'.$endpage;
+#				}
+#			}
+#		}
+#	}
+#}
 # UpdateDateTimeを現在時刻に設定
 $json['UpdateDateTime'] = date('Y-m-d\TH:i:s');
 
@@ -332,8 +389,15 @@ $json['PageInfo'] = $pageinfo;
 
 # PageFlipDirection
 $ppd = $opf->xpath("/opf:package/opf:spine/@page-progression-direction");
-if (!empty($ppd)) {
-	$json['PageFlipDirection'] = ($ppd == 'ltr') ? 'left' : 'right';
+if (is_array($ppd)) {
+    $ppd_string = $ppd[0]["page-progression-direction"];
+}
+else {
+    $ppd_string = $ppd;
+}
+echo "debug: ppd=" . $ppd_string . "\n";
+if (!empty($ppd_string)) {
+	$json['PageFlipDirection'] = ($ppd_string == 'ltr') ? 'left' : 'right';
 }
 else {
 	$json['PageFlipDirection'] = 'left';
@@ -345,4 +409,25 @@ file_put_contents("$outdir/meta.json", json_xencode($json));
 # tar出力
 $tar = new Archive_Tar($outdir.'.blt');
 $tar->createModify($outdir, '', dirname($outdir));
+deleteDir($outdir);
+
+function deleteDir($dirPath) {
+    if (!is_dir($dirPath)) {
+        throw new InvalidArgumentException("$dirPath must be a directory");
+    }
+
+    if (substr($dirPath, strlen($dirPath) - 1, 1) != '/') {
+        $dirPath .= '/';
+    }
+
+    $files = glob($dirPath . '*', GLOB_MARK);
+    foreach ($files as $file) {
+        if (is_dir($file)) {
+            deleteDir($file);
+        } else {
+            unlink($file);
+        }
+    }
+    rmdir($dirPath);
+}
 ?>

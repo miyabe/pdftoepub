@@ -12,6 +12,7 @@ use Date::Format;
 use Image::Size;
 use HTML::Entities;
 use File::Spec;
+use Image::Magick;
 
 use EpubCheck;
 use EpubPackage;
@@ -75,24 +76,34 @@ sub wrapimage {
 EOD
 	
 	for my $link (@links) {
-	my $lx = $$link[0] * $ww;
-	my $ly = $$link[1] * $hh;
-	my $lw = $$link[2] * $ww;
-	my $lh = $$link[3] * $hh;
-	my $href = xmlescape($$link[4]);
-	$lx += $x;
-	
-	our $forceint;
-	if ($forceint) {
-		$lx = int($lx + .5);
-		$ly = int($ly + .5);
-		$lw = int($lw + .5);
-		$lh = int($lh + .5);
-	}
-	
-print $fp <<"EOD";
-  <a xlink:title="LINK" xlink:href="$href" target="_blank"><rect x="$lx" y="$ly" width="$lw" height="$lh" stroke="transparent" fill="transparent"/></a>
+        my $lx = $$link[0] * $ww;
+        my $ly = $$link[1] * $hh;
+        my $lw = $$link[2] * $ww;
+        my $lh = $$link[3] * $hh;
+        my $href = xmlescape($$link[4]);
+        my $id = $$link[5];
+        $lx += $x;
+        
+        our $forceint;
+        if ($forceint) {
+            $lx = int($lx + .5);
+            $ly = int($ly + .5);
+            $lw = int($lw + .5);
+            $lh = int($lh + .5);
+        }
+        
+        our $audio;
+        if ($href =~ m/.*\.mp3$/ ) {
+            print $fp <<"EOD";
+      <rect id="play$id" onclick='\$("#track$id")[0].play()' x="$lx" y="$ly" width="$lw" height="$lh" stroke="transparent" fill="transparent"/>
 EOD
+            $audio = 1;
+        }
+        else {
+            print $fp <<"EOD";
+      <a xlink:title="LINK" xlink:href="$href" target="_blank"><rect x="$lx" y="$ly" width="$lw" height="$lh" stroke="transparent" fill="transparent"/></a>
+EOD
+        }
 	}
 
 	print $fp <<"EOD";
@@ -105,8 +116,8 @@ EOD
 # SVGをXHTMLでくるむ
 # EPUB3 Fixed Layout でのみ使用
 sub wrapsvg {
-	my ( $infile, $outfile, $name ) = @_;
-	
+	my ( $infile, $outfile, $name, @links ) = @_;
+
 	my $xp =
 	  XML::XPath->new( filename => $infile );
 	my $viewBox = $xp->findvalue('/svg/@viewBox')->value;
@@ -146,6 +157,32 @@ EOD
     <meta name="viewport" content="$viewport" />
     <title>$name</title>
     <link rel="stylesheet" href="Stylesheet.css" type="text/css"/>
+EOD
+
+    my $count = @links;
+    if ($count > 0) {
+        print $fp <<"EOD";
+
+    <script src="./jquery-2.1.0.min.js" type="text/javascript"></script>
+    <script>
+      \$(document).ready(function() {
+        \$('audio').each(function() {
+          \$(this).hide();
+          \$(this).bind("ended", function(event) {
+            this.pause();
+            if (this.setCurrentTime) {
+              this.setCurrentTime(0);
+            } else {
+              this.currentTime = 0;
+            }
+          })
+        })
+      })
+    </script>
+EOD
+    }
+
+    print $fp <<"EOD";
   </head>
   <body>
     <div>
@@ -156,6 +193,20 @@ EOD
 	}
 	print $fp <<"EOD";
     </div>
+EOD
+
+	for my $link (@links) {
+        my $href = xmlescape($$link[4]);
+        my $id = $$link[5];
+           
+        if ($href =~ m/.*\.mp3$/ ) {
+            print STDERR "debug: audio link $href\n";
+            print $fp <<"EOD";
+<audio id="track$id"  src="$href"  ></audio>
+EOD
+        }
+    }
+ 	print $fp <<"EOD";
   </body>
 </html>
 EOD
@@ -191,6 +242,9 @@ sub transcode {
 	# iBooks向け
 	my $ibooks      = 0;
 	
+	# 音声あり 
+	our $audio      = 0;
+
 	# Kindle向け
 	our $kindle      = 0;
 	
@@ -440,6 +494,12 @@ sub transcode {
 					$maxSamplePage = $endPage;
 				}
 			}
+
+            if ($maxSamplePage == 0) {
+                print STDERR
+"サンプルページがありません\n";
+                return -1;
+            }
 		}
 
 		# 目次
@@ -663,10 +723,108 @@ EOD
 		return ($viewHeight, $suffix, \%opts);
 	}
 
+    sub handle_audio_links {
+        our %mapping;
+
+		my ($pdfdir, $textlinks, $single, $extractcover) = @_;
+
+        my $count = 0;
+        open(LINKS, "< $textlinks");
+        binmode LINKS, ":utf8";
+        while(my $line = <LINKS>) {
+            chomp($line);
+
+            my @line_data = split(/,/, $line);
+
+            my $page = @line_data[0];
+            my $needle = @line_data[1];
+            my $link = @line_data[2];
+
+            my $file = $pdfdir;
+            my $file_page = $page;
+            if ($single && $extractcover) {
+                ++$file_page;
+            }
+            if (!$single) {
+                $file = sprintf( "$pdfdir/%05d.pdf", $page );
+                $file_page = 1;
+            }
+            my ($text, @bounds) = Utils::pdftotext($file, $file_page);
+
+            my $x1 = -1;
+            my $y1 = -1;
+            my $x2 = 0;
+            my $y2 = 0;
+            my $pos = 0;
+            my $ix = 0;
+            my $found = 0;
+            while ($ix != -1) {
+                my $strlen = 0;
+                if (length $text > 0) {
+                    $ix = index $text, $needle, $pos;
+                    $strlen = length($needle);
+                    if ($ix == -1) {
+                        my $needle2 = $needle;
+                        $needle2 =~ s/\s//g;
+                        $strlen = length($needle2);
+                        $ix = index $text, $needle2, $pos;
+                    }
+
+                    if ($ix != -1) {
+                        for (my $i = 0; $i < $strlen; $i ++) {
+                            if ($x1 < 0 || $x1 > $bounds[$ix + $i][0]) {
+                                $x1 = $bounds[$ix + $i][0];
+                            }
+                            if ($y1 < 0 || $y1 > $bounds[$ix + $i][1]) {
+                                $y1 = $bounds[$ix + $i][1];
+                            }
+
+                            if ($x2 < $bounds[$ix + $i][0] + $bounds[$ix + $i][2]) {
+                                $x2 = $bounds[$ix + $i][0] + $bounds[$ix + $i][2];
+                            }
+                            if ($y2 < $bounds[$ix + $i][1] + $bounds[$ix + $i][3]) {
+                                $y2 = $bounds[$ix + $i][1] + $bounds[$ix + $i][3];
+                            }
+                         }
+
+                         $found = 1;
+                    }
+                }
+                else {
+                    $ix = -1;
+                    if ($#line_data + 1 > 3) {
+                        my $w = @line_data[7];
+                        my $h = @line_data[8];
+                        $x1 = @line_data[3] / $w;
+                        $y1 = @line_data[4] / $h;
+                        $x2 = @line_data[5] / $w;
+                        $y2 = @line_data[6] / $h;
+
+                        $found = 1;
+                    }
+                }
+
+                my $cx = $x2 - $x1;
+                my $cy = $y2 - $y1;
+
+                push @{$mapping{$page}}, [$x1, $y1, $cx, $cy, $link, $count];
+                $pos = $ix + $strlen;
+                $count ++;
+            }
+
+            if (!$found) {
+                print STDERR "debug: $needle @ $page not found!\n$text\n";
+            }
+        }
+        close(LINKS);
+    }
+
+    our %mapping = (); # リンク
+
 	# PDFから画像に変換する
 	{
-		my %mapping = (); # リンク
-		
+	    our %mapping;
+
 		# 画像に変換
 		my $dh;
 		my ( $w, $h );
@@ -726,23 +884,7 @@ EOD
 			
 			# 音声へのリンク
 			if ( -f $textlinks ) {
-				open(LINKS, "< $textlinks");
-				binmode LINKS, ":utf8";
-				while(my $line = <LINKS>) {
-					chomp($line);
-    				my ($page, $needle, $link) = split(/,/, $line, 3);
-    				my $file = sprintf( "$pdfdir/%05d.pdf", $page );
-					my ($text, @bounds) = Utils::pdftotext($file, 1);
-					my $pos = 0;
-					while( (my $ix = index $text, $needle, $pos) != -1 ) {
-						my $strlen = length($needle);
-						for ( my $i = 0; $i < $strlen; ++$i) {
-							push @{$mapping{$page}}, [$bounds[$ix + $i][0], $bounds[$ix + $i][1], $bounds[$ix + $i][2], $bounds[$ix + $i][3], $link];
-						}
-						$pos += $strlen;
-					}
-				}
-				close(LINKS);
+                handle_audio_links($pdfdir, $textlinks, 0);
 			}
 			
 			if (! $skipBlankPage) {
@@ -812,25 +954,7 @@ EOD
 			
 			# 音声へのリンク
 			if ( -f $textlinks ) {
-				open(LINKS, "< $textlinks");
-				binmode LINKS, ":utf8";
-				while(my $line = <LINKS>) {
-					chomp($line);
-    				my ($page, $needle, $link) = split(/,/, $line, 3);
-					my ($text, @bounds) = Utils::pdftotext($pdfdir, $page);
-					if ($extractcover) {
-						--$page;
-					}
-					my $pos = 0;
-					while( (my $ix = index $text, $needle, $pos) != -1 ) {
-						my $strlen = length($needle);
-						for ( my $i = 0; $i < $strlen; ++$i) {
-							push @{$mapping{$page}}, [$bounds[$ix + $i][0], $bounds[$ix + $i][1], $bounds[$ix + $i][2], $bounds[$ix + $i][3], $link];
-						}
-						$pos += $strlen;
-					}
-				}
-				close(LINKS);
+                handle_audio_links($pdfdir, $textlinks, 1, $extractcover);
 			}
 
 			for ( my $i = 1 ; ; ++$i ) {
@@ -1105,6 +1229,12 @@ EOD
          ibooks: http://vocabulary.itunes.apple.com/rdf/ibooks/vocabulary-extensions-1.0/
 EOD
 		}
+        if ($audio) {
+            print $fp <<"EOD";
+             access: http://www.access-company.com/2012/layout#
+EOD
+        }
+ 
 		print $fp <<"EOD";
          prs: http://xmlns.sony.net/e-book/prs/"
          version="3.0"
@@ -1148,6 +1278,12 @@ EOD
     <meta property="ibooks:binding">false</meta>
 EOD
 		}
+        if ($audio) {
+			print $fp <<"EOD";
+    <meta property='access:mediaplayer'>external</meta>
+EOD
+        }
+
 		print $fp <<"EOD";
   </metadata>
   <manifest>
@@ -1342,7 +1478,7 @@ EOD
 					my $file;
 					if ($epub2) {
 						# EPUB3 Fixed Layout
-						wrapsvg($svgfile, sprintf( "$outdir/%05d.xhtml", $i, $name));
+						wrapsvg($svgfile, sprintf( "$outdir/%05d.xhtml", $i, $name), $name, @{$mapping{$i+0}});
 						unlink $svgfile;
 						$file = sprintf( "%05d.xhtml", $i );
 						print $fp
@@ -1398,3 +1534,70 @@ EOD
 	}
 	return 1;
 }
+
+sub outputCover {
+    my ($dir, $destdir) = @_;
+
+	our $base = dirname(__FILE__);
+	my $contentsID = basename($dir);
+
+	our $pdftoppm = "$base/../../poppler/utils/pdftoppm";
+	my $workdir = "$dir/work";
+	our $epubdir = "$workdir/epub";
+
+	mkdir $workdir;
+	mkdir $destdir;
+
+    my $thumbnail_height = 480;
+    for ( my $i = 0 ; $i < @ARGV ; ++$i ) {
+        if ( $ARGV[$i] eq '-thumbnail-height' ) {
+            $thumbnail_height = $ARGV[ ++$i ] + 0;
+        }
+    }
+
+    if (-f "$dir/cover.pdf") {
+        system "$pdftoppm -cropbox -l 1 -scale-to $thumbnail_height -jpeg $dir/cover.pdf $workdir/cover";
+        if ($?) {
+            print STDERR "$dir: cover.pdf をJPEGに変換する際にエラーが発生しました。\n";
+        }
+        else {
+            move "$workdir/cover00001.jpg", "$destdir/$contentsID.jpg";
+        }
+    }
+    else {
+        my $file;
+        
+        if (-f "$dir/cover.jpg") {
+            $file = "$dir/cover.jpg";
+        }
+        elsif(-d "$dir/appendix") {
+            my $dh;
+            opendir($dh, "$dir/appendix");
+            my @files = sort grep {/^[^\.].*\.jpg$/} readdir($dh);
+            closedir($dh);
+            if (@files) {
+                $file = "$dir/appendix/".$files[0];
+            }
+        }
+        elsif(-d $epubdir) {
+            my $dh;
+            opendir($dh, $epubdir);
+            my @files = sort grep {/^[^\.].*\.jpg$/} readdir($dh);
+            closedir($dh);
+            if (@files) {
+                $file = "$epubdir/".$files[0];
+            }
+        }
+
+        if (-f $file) {
+           
+            my $image = Image::Magick->new;
+            $image->Read($file);
+            my ($cw, $ch) = $image->Get('width', 'height');
+            $image->Scale(geometry => $thumbnail_height.'x'.$thumbnail_height);
+            $image->Write("$destdir/$contentsID.jpg");
+        }
+    }
+}
+
+

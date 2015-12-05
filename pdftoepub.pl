@@ -6,6 +6,10 @@ use PdfToEpub;
 use Booklista;
 use Utils;
 
+# add stack trace for debugging
+use Carp;
+$SIG{ __DIE__ } = sub { Carp::confess( @_ ) };
+
 require Exporter;
 @ISA	= qw(Exporter);
 
@@ -24,9 +28,32 @@ my $outputType = 0;
 sub process {
 	my $src = $_[0];
 	my $ret = 1;
-	
-	PdfToEpub::transcode($src, $dest, 1) or ($ret = 0);
-	Booklista::generate($src, $dest) or ($ret = 0);
+
+	if ($outputType eq 'raster') {
+		if (PdfToEpub::transcode($src, $dest, 1) >= 0) {
+            PdfToEpub::outputCover($src, $dest);
+            Booklista::generate($src, $dest) or ($ret = 0);
+        }
+	}
+	elsif ($outputType eq 'svg') {
+		PdfToEpub::transcode($src, $dest, 0) or ($ret = 0);
+        PdfToEpub::outputCover($src, $dest);
+		Booklista::generate($src, $dest) or ($ret = 0);
+	}
+    elsif ($outputType eq 'cover') {
+        PdfToEpub::outputCover($src, $dest);
+    }
+	else {
+		my $destdir = "$dest/raster";
+		mkdir $destdir;
+		PdfToEpub::transcode($src, $destdir, 1) or ($ret = 0);
+		Booklista::generate($src, $destdir) or ($ret = 0);
+		$destdir = "$dest/svg";
+		mkdir $destdir;
+		PdfToEpub::transcode($src, $destdir, 0) or ($ret = 0);
+		Booklista::generate($src, $destdir) or ($ret = 0);
+        PdfToEpub::outputCover($src, $dest);
+	}
 
 	return $ret;
 }
