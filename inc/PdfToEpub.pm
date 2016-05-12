@@ -131,13 +131,19 @@ sub wrapsvg {
 	open( $fp, "> $outfile" );
 	binmode $fp, ":utf8";
 	
-	our $noInitialScale;
 	my $viewport;
-	if ($noInitialScale) {
-		$viewport = "width=$width, height=$height";
+	
+	our $ibooks;
+	if ($ibooks) {
+		$viewport = "width=device-width";
 	}
 	else {
-		$viewport = "width=$width, height=$height, initial-scale=1.0";
+		$viewport = "width=$width, height=$height";
+	}
+	
+	our $noInitialScale;
+	if (!$noInitialScale) {
+		$viewport .= ", initial-scale=1.0";
 	}
 	
 	our $kindle;
@@ -240,7 +246,7 @@ sub transcode {
 	my $kobo      = 0;
 	
 	# iBooks向け
-	my $ibooks      = 0;
+	our $ibooks      = 0;
 	
 	# 音声あり 
 	our $audio      = 0;
