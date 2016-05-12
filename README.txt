@@ -143,7 +143,7 @@ popplerまたはmupdfのいずれかを指定可能です。デフォルトはpo
 
 -koboを付けると画像の中寄せ位置調整をしません。
 
--ibooksを付けるとOPFに<meta property="ibooks:binding">false</meta>タグを加えます。
+-ibooksを付けるとOPFに<meta property="ibooks:binding">false</meta>タグを加えます。XHTMLのviewportはwidth=device-widthとなります。
 
 -kindleを付けるとXHTMLに<meta name="primary-writing-mode" content="horizontal-rl"/>タグを加えます（-epub2出力かnav.xhtmlのみ）。
 
