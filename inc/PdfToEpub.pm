@@ -68,47 +68,98 @@ sub wrapimage {
 	my $fp;
 	open( $fp, "> $outfile" );
 	binmode $fp, ":utf8";
-	print $fp <<"EOD";
+
+    our $use_img;
+    if (!$use_img) {
+        print $fp <<"EOD";
 <?xml version="1.0" encoding="utf-8"?>
 <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
   width="100%" height="100%" viewBox="0 0 $w $h">
   <image x="$x" width="$ww" height="$hh" xlink:href="$file" />
 EOD
-	
-	for my $link (@links) {
-        my $lx = $$link[0] * $ww;
-        my $ly = $$link[1] * $hh;
-        my $lw = $$link[2] * $ww;
-        my $lh = $$link[3] * $hh;
-        my $href = xmlescape($$link[4]);
-        my $id = $$link[5];
-        $lx += $x;
         
-        our $forceint;
-        if ($forceint) {
+        for my $link (@links) {
+            my $lx = $$link[0] * $ww;
+            my $ly = $$link[1] * $hh;
+            my $lw = $$link[2] * $ww;
+            my $lh = $$link[3] * $hh;
+            my $href = xmlescape($$link[4]);
+            my $id = $$link[5];
+            $lx += $x;
+            
+            our $forceint;
+            if ($forceint) {
+                $lx = int($lx + .5);
+                $ly = int($ly + .5);
+                $lw = int($lw + .5);
+                $lh = int($lh + .5);
+            }
+            
+            our $audio;
+            if ($href =~ m/.*\.mp3$/ ) {
+                print $fp <<"EOD";
+      <rect id="play$id" onclick='\$("#track$id")[0].play()' x="$lx" y="$ly" width="$lw" height="$lh" stroke="transparent" fill="transparent"/>
+EOD
+                $audio = 1;
+            }
+            else {
+                print $fp <<"EOD";
+      <a xlink:title="LINK" xlink:href="$href" target="_blank"><rect x="$lx" y="$ly" width="$lw" height="$lh" stroke="transparent" fill="transparent"/></a>
+EOD
+            }
+        }
+
+        print $fp <<"EOD";
+</svg>
+EOD
+    }
+    else {
+        # use img instead of svg to support access viewer
+        print $fp <<"EOD";
+<div>
+<img width="$ww" height="$hh" src="$file" usemap="#links_map" />
+<map name="links_map">
+EOD
+        
+        for my $link (@links) {
+            my $lx = $$link[0] * $ww;
+            my $ly = $$link[1] * $hh;
+            my $lw = $$link[2] * $ww;
+            my $lh = $$link[3] * $hh;
+            my $href = xmlescape($$link[4]);
+            my $id = $$link[5];
+            $lx += $x;
+
+            my $lx2 = $lx + $lw;
+            my $ly2 = $ly + $lh;
+            
             $lx = int($lx + .5);
             $ly = int($ly + .5);
             $lw = int($lw + .5);
             $lh = int($lh + .5);
-        }
-        
-        our $audio;
-        if ($href =~ m/.*\.mp3$/ ) {
-            print $fp <<"EOD";
-      <rect id="play$id" onclick='\$("#track$id")[0].play()' x="$lx" y="$ly" width="$lw" height="$lh" stroke="transparent" fill="transparent"/>
+            $lx2 = int($lx2 + .5);
+            $ly2 = int($ly2 + .5);
+            
+            our $audio;
+            if ($href =~ m/.*\.mp3$/ ) {
+                print $fp <<"EOD";
+    <area onclick='\$("#track$id")[0].play()' shape="rect" coords="$lx,$ly,$lx2,$ly2"/>
 EOD
-            $audio = 1;
-        }
-        else {
-            print $fp <<"EOD";
-      <a xlink:title="LINK" xlink:href="$href" target="_blank"><rect x="$lx" y="$ly" width="$lw" height="$lh" stroke="transparent" fill="transparent"/></a>
+                $audio = 1;
+            }
+            else {
+                print $fp <<"EOD";
+    <area href="$href" shape="rect" coords="$lx,$ly,$lx2,$ly2"/>
 EOD
+            }
         }
-	}
 
-	print $fp <<"EOD";
-</svg>
+        print $fp <<"EOD";
+</map>
+</div>
 EOD
+
+    }
 	
 	close($fp);
 }
@@ -118,11 +169,21 @@ EOD
 sub wrapsvg {
 	my ( $infile, $outfile, $name, @links ) = @_;
 
-	my $xp =
-	  XML::XPath->new( filename => $infile );
-	my $viewBox = $xp->findvalue('/svg/@viewBox')->value;
-	my ( $width, $height ) =
-	  ( $viewBox =~ /^0 0 (\d+) (\d+)$/ );
+    our $use_img;
+    my $width;
+    my $height;
+    my $xp =
+      XML::XPath->new( filename => $infile );
+
+    if (!$use_img) {
+        my $viewBox = $xp->findvalue('/svg/@viewBox')->value;
+        ( $width, $height ) =
+          ( $viewBox =~ /^0 0 (\d+) (\d+)$/ );
+    }
+    else {
+        $width = $xp->findvalue('/div/img/@width')->value;
+        $height = $xp->findvalue('/div/img/@height')->value;
+    }
 
 	my $infp;
 	open( $infp, "< $infile" );
@@ -134,12 +195,12 @@ sub wrapsvg {
 	my $viewport;
 	
 	our $ibooks;
-	if ($ibooks) {
-		$viewport = "width=device-width";
-	}
-	else {
+#	if ($ibooks) {
+#		$viewport = "width=device-width";
+#	}
+#	else {
 		$viewport = "width=$width, height=$height";
-	}
+#	}
 	
 	our $noInitialScale;
 	if (!$noInitialScale) {
@@ -165,8 +226,20 @@ EOD
     <link rel="stylesheet" href="Stylesheet.css" type="text/css"/>
 EOD
 
+    # check if we have audio links
+    my $has_audio_links;
+    $has_audio_links = 0;
+	for my $link (@links) {
+        my $href = xmlescape($$link[4]);
+           
+        if ($href =~ m/.*\.mp3$/ ) {
+            $has_audio_links = 1;
+            last;
+        }
+    }
+
     my $count = @links;
-    if ($count > 0) {
+    if ($count > 0 && $has_audio_links) {
         print $fp <<"EOD";
 
     <script src="./jquery-2.1.0.min.js" type="text/javascript"></script>
@@ -191,15 +264,24 @@ EOD
     print $fp <<"EOD";
   </head>
   <body>
+EOD
+
+    if (!$use_img) {
+        print $fp <<"EOD";
     <div>
 EOD
-	<$infp>;
+        <$infp>;
+    }
+
 	while(<$infp>) {
 		print $fp $_;
 	}
-	print $fp <<"EOD";
+
+    if (!$use_img) {
+        print $fp <<"EOD";
     </div>
 EOD
+    }
 
 	for my $link (@links) {
         my $href = xmlescape($$link[4]);
@@ -276,6 +358,9 @@ sub transcode {
 	our $forceint = 0;
 	
 	our $previewPageOrigin = 1;
+
+    # use IMG instead of SVG
+    our $use_img = 0;
 	
 	# 変換に使うプログラム
 	our $program = 'poppler';
@@ -347,10 +432,14 @@ sub transcode {
 			}
 		}
 		elsif ( $ARGV[$i] eq '-extractcover' ) {
+            print STDERR "debug: extractcover \n";
 			$extractcover = 1;
 		}
 		elsif ( $ARGV[$i] eq '-cover-in-toc' ) {
 			$coverInToc = 1;
+		}
+		elsif ( $ARGV[$i] eq '-use-img' ) {
+			$use_img = 1;
 		}
 	}
 
@@ -405,7 +494,8 @@ sub transcode {
 		$publisher,   $publisher_kana, $name,       $kana,
 		$cover_date,  $sales_date,     $sales_yyyy, $sales_mm,
 		$sales_dd,    $introduce,      $issued,     $ppd,
-		$orientation, $modified,       $datatype
+		$orientation, $modified,       $modified_version,
+        $datatype
 	);
 	our %pageToHeight  = ();
 	our %pageToDpi     = ();
@@ -479,6 +569,7 @@ sub transcode {
 		}
 
 		$modified = time2str( "%Y-%m-%dT%H:%M:%SZ", time, "GMT" );
+        $modified_version = time2str( "%Y.%m%d.%H%M", time, "GMT" );
 
 		$datatype = Utils::trim( $xp->findvalue("/Content/DataType/text()")->value );
 		if ( !$datatype ) {
@@ -731,6 +822,7 @@ EOD
 
     sub handle_audio_links {
         our %mapping;
+        our %has_audio;
 
 		my ($pdfdir, $textlinks, $single, $extractcover) = @_;
 
@@ -766,7 +858,8 @@ EOD
             my $found = 0;
             while ($ix != -1) {
                 my $strlen = 0;
-                if (length $text > 0) {
+                if (length($needle) > 0) {
+                    print STDERR "debug: needle is $needle @ $page\n";
                     $ix = index $text, $needle, $pos;
                     $strlen = length($needle);
                     if ($ix == -1) {
@@ -814,6 +907,10 @@ EOD
                 my $cy = $y2 - $y1;
 
                 push @{$mapping{$page}}, [$x1, $y1, $cx, $cy, $link, $count];
+                if ($link =~ m/.*\.mp3$/ ) {
+                    $has_audio{$page} = 1;
+                }
+
                 $pos = $ix + $strlen;
                 $count ++;
             }
@@ -826,6 +923,7 @@ EOD
     }
 
     our %mapping = (); # リンク
+    our %has_audio = ();
 
 	# PDFから画像に変換する
 	{
@@ -1164,12 +1262,13 @@ EOD
 	}
 
 	# Check SVG viewBox.
+    our $use_img;
 	my ( $width, $height );
 	{
-		if ($imagespine == 0) {
+		if ($imagespine == 0 && !$use_img) {
 			my $xp = XML::XPath->new( filename => "$outdir/" . $files[0] );
 			my $viewBox = $xp->findvalue('/svg/@viewBox')->value;
-			( $width, $height ) = ( $viewBox =~ /^0 0 (\d+) (\d+)$/ );
+            ( $width, $height ) = ( $viewBox =~ /^0 0 (\d+) (\d+)$/ );
 		} else {
 			( $width, $height ) = imgsize( "$outdir/" . $files[0] );
 		}
@@ -1273,15 +1372,19 @@ EOD
 		if ($epub2) {
 			# EPUB3 Fixed Layout
 			# 固定レイアウト、向き自動、見開き自動
+            my $wxh = $width . "x"  . $height;
 			print $fp <<"EOD";
     <meta property="rendition:layout">pre-paginated</meta>
     <meta property="rendition:orientation">$orientation</meta>
     <meta property="rendition:spread">auto</meta>
+    <meta name="original-resolution" content="$wxh" />
 EOD
 		}
 		if ($ibooks) {
 			print $fp <<"EOD";
     <meta property="ibooks:binding">false</meta>
+    <meta property="ibooks:version">$modified_version</meta>
+
 EOD
 		}
         if ($audio) {
@@ -1369,6 +1472,10 @@ EOD
 			elsif (/^.*\.mp3$/) {
 				print $fp "audio/mpeg";
 			}
+			elsif (/^.*\.txt$/) {
+				print $fp "text/plain";
+			}
+
 			print $fp "\"";
 			# カバーページ
 			if ($is_image) {
@@ -1482,13 +1589,36 @@ EOD
 				my $svgfile = sprintf("$outdir/%05d.svg", $i);
 				if ( -f  $svgfile ) {
 					my $file;
+                    our $use_img;
+                    our %has_audio;
+
 					if ($epub2) {
 						# EPUB3 Fixed Layout
 						wrapsvg($svgfile, sprintf( "$outdir/%05d.xhtml", $i, $name), $name, @{$mapping{$i+0}});
 						unlink $svgfile;
 						$file = sprintf( "%05d.xhtml", $i );
-						print $fp
-"    <item id=\"$id\" href=\"$file\" properties=\"svg\" media-type=\"application/xhtml+xml\"/>\n";
+
+                        my $properties = "";
+
+                        if (!$use_img) {
+                            $properties .= "svg";
+                        }
+
+                        if ($has_audio{$i+0}) {
+                            if (length($properties) > 0) {
+                                $properties .= " ";
+                            }
+                            $properties .= "scripted";
+                        }
+
+                        print $fp
+"    <item id=\"$id\" href=\"$file\"";
+                        if (length $properties > 0) {
+                            print $fp
+" properties=\"$properties\"";
+                        }
+                        print $fp
+" media-type=\"application/xhtml+xml\"/>\n";
 					}
 					else {
 						$file = sprintf( "%05d.svg", $i );
@@ -1542,6 +1672,8 @@ EOD
 }
 
 sub outputCover {
+    print STDERR "extracting cover\n";
+
     my ($dir, $destdir) = @_;
 
 	our $base = dirname(__FILE__);
@@ -1574,9 +1706,13 @@ sub outputCover {
         my $file;
         
         if (-f "$dir/cover.jpg") {
+            print STDERR "debug: cover.jpg found\n";
+
             $file = "$dir/cover.jpg";
         }
-        elsif(-d "$dir/appendix") {
+        elsif (-d "$dir/appendix") {
+            print STDERR "debug: extracting cover from appendix\n";
+
             my $dh;
             opendir($dh, "$dir/appendix");
             my @files = sort grep {/^[^\.].*\.jpg$/} readdir($dh);
@@ -1585,7 +1721,10 @@ sub outputCover {
                 $file = "$dir/appendix/".$files[0];
             }
         }
-        elsif(-d $epubdir) {
+
+        if (! -f $file && -d $epubdir) {
+            print STDERR "debug: extracting cover from $epubdir\n";
+
             my $dh;
             opendir($dh, $epubdir);
             my @files = sort grep {/^[^\.].*\.jpg$/} readdir($dh);
@@ -1596,12 +1735,14 @@ sub outputCover {
         }
 
         if (-f $file) {
-           
             my $image = Image::Magick->new;
             $image->Read($file);
             my ($cw, $ch) = $image->Get('width', 'height');
             $image->Scale(geometry => $thumbnail_height.'x'.$thumbnail_height);
             $image->Write("$destdir/$contentsID.jpg");
+        }
+        else {
+            print STDERR "debug: cover not found\n";
         }
     }
 }

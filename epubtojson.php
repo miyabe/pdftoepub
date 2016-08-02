@@ -46,7 +46,7 @@ $json = array();
 
 # コンテンツID
 $content_id = basename($file);
-if (preg_match('/^(.+)_eEPUB3\\.epub$/', $content_id, &$matches) === 1) {
+if (preg_match('/^(.+)_eEPUB3\\.epub$/', $content_id, $matches) === 1) {
 	$content_id = $matches[1];
 	$json['ItemId'] = $content_id;
 }
@@ -194,7 +194,7 @@ foreach($itemrefs as $itemref) {
 		die("ページのMimeTypeが不正です:".$type);
 	}
 	$filename = basename($image);
-	if (preg_match('/^([0-9]+)(\\..+)$/', $filename, &$matches) === 1) {
+	if (preg_match('/^([0-9]+)(\\..+)$/', $filename, $matches) === 1) {
 		$i = $matches[1] + 1;
 		$suffix = $matches[2];
 	}

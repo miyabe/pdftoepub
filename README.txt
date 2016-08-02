@@ -1,11 +1,11 @@
-﻿■ ビルド方法
+■ ビルド方法
 # Debian wheezy でビルド・動作を確認しています
 
 # Packages
 
-apt-get install git pkg-config automake libtool bzip2 autoconf gettext make g++
+apt-get install git pkg-config automake libtool bzip2 autoconf gettext make g++ zip unzip
 
-apt-get install libxext-dev libcurl4-openssl-dev imagemagick libmagickcore-dev zlib1g-dev libpng12-dev libfreetype6-dev libglib2.0-dev poppler-data pango-graphite libjpeg-dev libxrender-dev libfontconfig1-dev libopenjpeg-dev libxcb-render-util0-dev libxcb-render0-dev libpoppler-glib-dev libxml2-dev libgtk2.0-dev libgtk2.0 liblcms2-dev libhtml-html5-entities-perl 
+apt-get install libxext-dev libcurl4-openssl-dev imagemagick libmagickcore-dev zlib1g-dev libpng12-dev libfreetype6-dev libglib2.0-dev poppler-data pango-graphite libjpeg-dev libxrender-dev libfontconfig1-dev libopenjpeg-dev libxcb-render-util0-dev libxcb-render0-dev libpoppler-glib-dev libxml2-dev libgtk2.0-dev libgtk2.0 liblcms2-dev libhtml-html5-entities-perl libgconf2-4 libjpeg-progs
 
 apt-get install php5 php5-mysql php5-sybase php5-imagick php-pear php5-dev libssh2-1 libssh2-1-dev
 
@@ -291,3 +291,4 @@ pipeSetXYでバッファ外に描画しないように修正
 /Content/ContentInfo/PreviewPageList/PreviewPage
 /Content/ContentInfo/PreviewPageList/PreviewPage/StartPage
 /Content/ContentInfo/PreviewPageList/PreviewPage/EndPage
+
