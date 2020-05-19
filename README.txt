@@ -57,9 +57,9 @@ make
 
 # popplerをビルド
 cd $POPPLER_DIR
-./autogen.sh
-make clean
-./configure CAIRO_CFLAGS="-I/usr/include/cairo -I/usr/include/freetype2" POPPLER_GLIB_CFLAGS="-I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/cairo" POPPLER_GLIB_LIBS="-lglib-2.0" --datarootdir=/usr/share
+mkdir build
+cd build
+cmake ..
 make
 
 # mupdfをビルド
@@ -229,15 +229,17 @@ epub-patch5.pl ディレクトリ
  ディレクトリに含まれるepubに<meta property="layout:orientation">～がなければ、<meta property="layout:orientation">auto</meta>を挿入します。
 
 ■ popplerの修正内容
+ビルドには以下が必要
+https://packages.ubuntu.com/ja/bionic/amd64/libopenjp2-7-dev/download
+
 ・CairoOutputDev.css
 cairoが対応している場合は、常にshow_text_glyphを呼び出すようにした。
 
-・CairoFontFace.cc
+・CairoFontEngine.cc
 cairo_font_face_tをキャッシュしているが、縦書き横書き（wmode）が違う場合でも同じフォントとして扱われ、縦書き横書きが混在した場合に縦書き部分に横書きフォントが使われてしまうバグがあったので、GtkFontのgetWModeが返す値もキャッシュのキーに加えた。
 
 ・pdftocairo.cc
 ファイル名の形式をname_0000.jpgにした
--scale-to-x, -scale-to-yを指定したとき、アスペクト比をそのままで最小の解像度になるようにした
 
 ・GfxFont.cc
 縦書きフォントの中央合わせでフォントの幅を考慮してなかった箇所を修正。
@@ -245,10 +247,7 @@ cairo_font_face_tをキャッシュしているが、縦書き横書き（wmode�
 
 ・pdftoppm.cc
 ファイル名の形式を00000.jpgにした
--jpegcompressionというJPEGの画質を指定するオプションを入れた。引数の形式は "q=画質"
-
-・SplashBitmap.cc
-compressionStringでJPEGの画質を指定できるようにした。文字列の形式は "q=画質"
+-scale-to-x, -scale-to-yを指定したとき、アスペクト比をそのままで最小の解像度になるようにした
 
 ・Stream.cc
 1ビット画像のPredictor = 2の処理にバグがあったため修正。

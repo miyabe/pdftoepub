@@ -1679,7 +1679,7 @@ sub outputCover {
 	our $base = dirname(__FILE__);
 	my $contentsID = basename($dir);
 
-	our $pdftoppm = "$base/../../poppler/utils/pdftoppm";
+	our $pdftoppm = "$base/../../poppler/build/utils/pdftoppm";
 	my $workdir = "$dir/work";
 	our $epubdir = "$workdir/epub";
 

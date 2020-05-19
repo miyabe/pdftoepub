@@ -47,11 +47,11 @@ sub generate {
 			my $pdf = sprintf("$pdfdir/%05d.pdf", $startPage);
 			if (-f $pdf) {
 				if ($sampleType eq "s") {
-					system "../poppler/utils/pdftoppm -cropbox -scale-to 480 -jpeg $pdf $outdir/";
+					system "../poppler/build/utils/pdftoppm -cropbox -scale-to 480 -jpeg $pdf $outdir/";
 					move "$outdir/00001.jpg", sprintf("$outdir/s_$contentsID"."_%04d.jpg", $startPage);
 				}
 				elsif ($sampleType eq "t") {
-					system "../poppler/utils/pdftoppm -cropbox -scale-to-x 198 -scale-to-y 285 -jpeg $pdf $outdir/";
+					system "../poppler/build/utils/pdftoppm -cropbox -scale-to-x 198 -scale-to-y 285 -jpeg $pdf $outdir/";
 					move "$outdir/00001.jpg", sprintf("$outdir/t_$contentsID"."_%04d.jpg", $startPage);
 				}
 			}
@@ -90,7 +90,7 @@ sub generate {
 	}
 	
 	if (-f "$dir/cover.pdf") {
-		system "../poppler/utils/pdftoppm -cropbox -l 1 -scale-to 480 -jpeg $dir/cover.pdf $workdir/cover";
+		system "../poppler/build/utils/pdftoppm -cropbox -l 1 -scale-to 480 -jpeg $dir/cover.pdf $workdir/cover";
 		move "$workdir/cover00001.jpg", "$destdir/$contentsID.jpg";
 	}
 	else {

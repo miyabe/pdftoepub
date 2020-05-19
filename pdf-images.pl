@@ -20,11 +20,11 @@ sub images {
 	
 	my $pdfdir = "$target/$contentsID.pdf";
 	if (-f $pdfdir) {
-		my ($count) = grep {/^Pages:(.*)$/} qx/$base\/..\/poppler\/utils\/pdfinfo $pdfdir/;
+		my ($count) = grep {/^Pages:(.*)$/} qx/$base\/..\/poppler\/build\/utils\/pdfinfo $pdfdir/;
 		($count) = ($count =~ /^Pages:*(.*)$/);
 		$count += 0;
 		for (my $j = 1; $j <= $count; $j++) {
-			system "$base/../poppler/utils/pdfimages -f $j -l $j $pdfdir $imagesdir/$j";
+			system "$base/../poppler/build/utils/pdfimages -f $j -l $j $pdfdir $imagesdir/$j";
 			print "page $j\n";
 			for (my $i = 0;; $i++) {
 				my $ppm = sprintf("$imagesdir/$j-%03d.ppm", $i);
@@ -53,7 +53,7 @@ sub images {
 			my ($num) = ($file =~ /^(\d{5})\.pdf$/);
 			$num = $num+0;
 			print "page $num\n";
-			system "$base/../poppler/utils/pdfimages $pdfdir/$file $imagesdir/$num";
+			system "$base/../poppler/build/utils/pdfimages $pdfdir/$file $imagesdir/$num";
 			for (my $i = 0;; $i++) {
 				my $ppm = sprintf("$imagesdir/$num-%03d.ppm", $i);
 				if (!(-f $ppm)) {

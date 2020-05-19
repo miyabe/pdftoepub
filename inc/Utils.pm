@@ -136,11 +136,11 @@ sub pdftoimage($$$%;$$) {
 	}
 	else {
 		# poppler
-		my $pdftoppm = dirname(__FILE__)."/../../poppler/utils/pdftoppm";
+		my $pdftoppm = dirname(__FILE__)."/../../poppler/build/utils/pdftoppm";
 		
 		my $options;
 		if ($$opts{suffix} eq "jpg") {
-			$options = "-jpeg -jpegcompression q=$$opts{qf}";
+			$options = "-jpeg -jpegopt quality=$$opts{qf}";
 		}
 		else {
 			$options = "-png";
