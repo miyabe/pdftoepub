@@ -11,7 +11,7 @@ apt-get install php5 php5-mysql php5-sybase php5-imagick php-pear php5-dev libss
 
 pear install Archive_Tar
 
-apt-get install libossp-uuid-perl libarchive-zip-perl libxml-xpath-perl libimage-size-perl perlmagick uuid-dev 
+apt-get install libossp-uuid-perl libarchive-zip-perl libxml-xpath-perl libimage-size-perl perlmagick uuid-dev
 cpan install Data::UUID XML::XPath Image::Size Archive::Zip
 
 apt-get install openjdk-7-jre
@@ -78,7 +78,6 @@ make
 [ID]は書誌IDです。
 [ID]/[ID].xml -書誌データXML
 [ID]/m_[ID].xml -サンプル属性XML
-[ID]/ins -挿し込みデータ
 [ID]/appendix -追加データ
 [ID]/textlinks.txt -リンクの設定
 
@@ -94,18 +93,10 @@ make
 
 ・pdftoepub.pl ディレクトリ名 出力先 [-view-height ビュー高さ] [-dpi 解像度] [-aaVector yes|no] [-program poppler|mupdf [pages]] \
 [-quality 画質] [-png] [-epub2] [-kobo] [-ibooks] [-kindle] [-imagespine] [-skipBlankPage] [-sample] [-no-initial-scale] \
-[-thumbnail-height サムネイル高さ] [-extractcover] [-cover-in-toc] 
+[-thumbnail-height サムネイル高さ] [-extractcover] [-cover-in-toc]
 
 PDFからEPUBを生成するPerlスクリプトです。
 ディレクトリ名の最後に / を付けると、さらにディレクトリ中にある複数のディレクトリを処理します。
-
-EPUBに挿し込むデータは挿し込みデータディレクトリ([ID]/ins)にEPUB内と同じディレクトリ構成で配置します。
-EPUBに挿し込むページは ページ番号(5桁)-通し番号(5桁)/main.html という名前で配置しておきます。
-例えば 00003-00001/main.html, 00003-00002/main.html, 00003-00003/main.html ... という名前で配置すると、それぞれのコンテンツが順に3ページと4ページの間に挿入されます。
-1ページの前に挿入する場合は 00000-00001/main.html のようにします。
-表紙の前に挿入する場合は -0001-00001/main.html のようにします。
-末尾に挿入する場合は 99999-00001/main.html のようにします。
-挿し込むページをPDFで配置する場合は、PDFを add_00001-00001.pdf のように配置してください。PDFが複数ページの場合は、複数ページが挿入されます。
 
 [ID]/appendix内にはPDFに追加で格納するファイルを入れてください。
 サポートするファイルは音声（.mp3, .mp4）です。
@@ -290,4 +281,3 @@ pipeSetXYでバッファ外に描画しないように修正
 /Content/ContentInfo/PreviewPageList/PreviewPage
 /Content/ContentInfo/PreviewPageList/PreviewPage/StartPage
 /Content/ContentInfo/PreviewPageList/PreviewPage/EndPage
-
