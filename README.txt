@@ -93,7 +93,7 @@ make
 
 ・pdftoepub.pl ディレクトリ名 出力先 [-view-height ビュー高さ] [-dpi 解像度] [-aaVector yes|no] [-program poppler|mupdf [pages]] \
 [-quality 画質] [-png] [-epub2] [-kobo] [-ibooks] [-kindle] [-imagespine] [-skipBlankPage] [-sample] [-no-initial-scale] \
-[-thumbnail-height サムネイル高さ] [-extractcover] [-cover-in-toc]
+[-thumbnail-height サムネイル高さ] [-extractcover] [-cover-in-toc] [-use-folders]
 
 PDFからEPUBを生成するPerlスクリプトです。
 ディレクトリ名の最後に / を付けると、さらにディレクトリ中にある複数のディレクトリを処理します。
@@ -159,6 +159,8 @@ BlankImage/blank.pdfがあれば、それをブランクページとして使い
 
 -cover-in-tocを付けると、表紙を「表紙」という名前で目次の先頭に入れます。
 書誌データXMLにStartPageが1の目次項目が既にある場合は何もしません。
+
+-use-foldersを付けると画像等を別のディレクトリに格納します。各ページはXHTMLになります。
 
 戻り値：単一ファイルを処理する場合　成功した場合 0 エラー発生時 -1
 ディレクトリを指定した場合は常に 0　が戻ります

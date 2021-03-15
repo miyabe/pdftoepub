@@ -120,7 +120,7 @@ EOD
         # use img instead of svg to support access viewer
         print $fp <<"EOD";
 <div>
-<img width="$ww" height="$hh" src="$file" usemap="#links_map" />
+<img width="$ww" height="$hh" style="width:100%;height:100%;" src="$file" usemap="#links_map" />
 <map name="links_map">
 EOD
 
@@ -168,7 +168,6 @@ EOD
 }
 
 # SVGをXHTMLでくるむ
-# EPUB3 Fixed Layout でのみ使用
 sub wrapsvg {
 	my ( $infile, $outfile, $name, @links ) = @_;
 
@@ -223,10 +222,12 @@ if ($kindle) {
     <meta name="primary-writing-mode" content="horizontal-rl"/>
 EOD
 }
+	our $use_folders;
+	my $css_path = $use_folders ? "../style/style.css" : "./style/style.css";
 	print $fp <<"EOD";
     <meta name="viewport" content="$viewport" />
     <title>$name</title>
-    <link rel="stylesheet" href="../style/style.css" type="text/css"/>
+    <link rel="stylesheet" href="$css_path" type="text/css"/>
 EOD
 
     # check if we have audio links
@@ -368,6 +369,9 @@ sub transcode {
   # 内容をitemsフォルダに分ける
 	our $use_folders = 0;
 
+	# 必ずXHTMLを使う
+	our $use_xhtml = 0;
+
 	# 変換に使うプログラム
 	our $program = 'poppler';
 	our %pageToProgram = ();
@@ -449,6 +453,8 @@ sub transcode {
 		}
 		elsif ( $ARGV[$i] eq '-use-folders' ) {
 			$use_folders = 1;
+			$use_xhtml = 1;
+			$use_img = 1;
 		}
 	}
 
@@ -493,7 +499,7 @@ sub transcode {
 	rmtree $workdir;
 	mkdir $workdir;
 	mkpath( "$imagedir", 0, 0755 );
-	if ($epub2) {
+	if ($epub2 || $use_xhtml) {
 		mkpath( "$xhtmldir", 0, 0755 );
 	}
 
@@ -653,7 +659,7 @@ EOD
 					$file = "image/$file";
 				}
 			}
-			elsif ($epub2) {
+			elsif ($epub2 || $use_xhtml) {
 				$file = "00000.xhtml";
 				if ($use_folders) {
 					$file = "xhtml/$file";
@@ -685,7 +691,7 @@ EOD
 					$file = "image/$file";
 				}
 			}
-			elsif ($epub2) {
+			elsif ($epub2 || $use_xhtml) {
 				$file = sprintf( "%05d.xhtml", $startPage );
 				if ($use_folders) {
 					$file = "xhtml/$file";
@@ -734,10 +740,16 @@ EOD
 
 				my $file;
 				if ($imagespine) {
-					$file = "image/00000.$imageSuffix";
+					$file = "00000.$imageSuffix";
+					if ($use_folders) {
+						$file = "image/$file";
+					}
 				}
 				else {
-					$file = "xhtml/00000.xhtml";
+					$file = "00000.xhtml";
+					if ($use_folders) {
+						$file = "xhtml/$file";
+					}
 				}
 				++$i;
 				print $fp <<"EOD";
@@ -761,10 +773,16 @@ EOD
 				}
 				my $file;
 				if ($imagespine) {
-					$file = sprintf( "image/%05d.$imageSuffix", $startPage );
+					$file = sprintf( "%05d.$imageSuffix", $startPage );
+					if ($use_folders) {
+						$file = "image/$file";
+					}
 				}
 				else {
-					$file = sprintf( "xhtml/%05d.xhtml", $startPage );
+					$file = sprintf( "%05d.xhtml", $startPage );
+					if ($use_folders) {
+						$file = "xhtml/$file";
+					}
 				}
 				++$i;
 				print $fp <<"EOD";
@@ -1236,7 +1254,7 @@ EOD
 	{
 		my $dir;
 		opendir( $dir, $imagedir );
-		if ($imagespine == 0) {
+		if ($imagespine == 0 && !$use_img) {
 			@files = sort grep { /^\d{5}\.svg$/ } readdir($dir);
 		}
 		else {
@@ -1306,11 +1324,9 @@ EOD
 			print $fp <<"EOD";
          layout: http://xmlns.sony.net/e-book/prs/layoutoptions/
 EOD
-		}
-		if ($epub2) {
-			# EPUB3 Fixed Layout
-			print $fp <<"EOD";
-         rendition: http://www.idpf.org/vocab/rendition/#
+		# EPUB3 Fixed Layout
+		print $fp <<"EOD";
+       rendition: http://www.idpf.org/vocab/rendition/#
 EOD
 		}
 		if ($ibooks) {
@@ -1353,7 +1369,7 @@ EOD
 		print $fp <<"EOD";
     <meta property="prs:datatype">$datatype</meta>
 EOD
-		if ($epub2) {
+	if (!$epub2) {
 			# EPUB3 Fixed Layout
 			# 固定レイアウト、向き自動、見開き自動
             my $wxh = $width . "x"  . $height;
@@ -1388,7 +1404,6 @@ EOD
 
 		# nav
 		if ($epub2) {
-			# EPUB3 Fixed Layout
 			print $fp
 "    <item id=\"ncx\" href=\"toc.ncx\" media-type=\"application/x-dtbncx+xml\"/>\n";
 		}
@@ -1461,14 +1476,28 @@ EOD
 			print $fp "\"";
 			# カバーページ
 			if ($is_image) {
-				if (!($basename =~ /^00000\..+$/)) {
-					if ($basename =~ /^00001\..+$/) {
-						if ( -f "00000.png" || -f "00000.gif" || -f "00000.jpg" || -f "00000.svg" ) {
+				if ($use_folders) {
+					if (!($basename =~ /^image\/00000\..+$/)) {
+						if ($basename =~ /^image\/00001\..+$/) {
+							if ( -f "00000.png" || -f "00000.gif" || -f "00000.jpg" || -f "00000.svg" ) {
+								$is_image = 0;
+							}
+						}
+						else {
 							$is_image = 0;
 						}
 					}
-					else {
-						$is_image = 0;
+				}
+				else {
+					if (!($basename =~ /^00000\..+$/)) {
+						if ($basename =~ /^00001\..+$/) {
+							if ( -f "00000.png" || -f "00000.gif" || -f "00000.jpg" || -f "00000.svg" ) {
+								$is_image = 0;
+							}
+						}
+						else {
+							$is_image = 0;
+						}
 					}
 				}
 				if ($is_image) {
@@ -1521,8 +1550,7 @@ EOD
                     our $use_img;
                     our %has_audio;
 
-					if ($epub2) {
-						# EPUB3 Fixed Layout
+					if ($epub2 || $use_xhtml) {
 						wrapsvg($svgfile, sprintf( "$xhtmldir/%05d.xhtml", $i, $name), $name, @{$mapping{$i+0}});
 						unlink $svgfile;
 						$file = sprintf( "%05d.xhtml", $i );
@@ -1582,6 +1610,9 @@ EOD
 			  ( $i % 2 == ( ( $ppd eq 'rtl' ) ? 0 : 1 ) )
 			  ? "page-spread-left"
 			  : "page-spread-right";
+			if ($i == 0) {
+				$props = "rendition:page-spread-center";
+			}
 			print $fp "    <itemref idref=\"$id\" properties=\"$props\"/>\n";
 		}
 

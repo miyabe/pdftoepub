@@ -1,12 +1,14 @@
 @charset "utf-8";
 
-svg{
-	margin:0;
-	padding:0;
-}
-
 body, html{
 	margin:0;
 	font-size:0;
 	padding:0;
+	page-break-inside:avoid;
+}
+img, svg {
+	display:block;
+	margin: auto;
+	max-width:100%;
+	max-height:100%;
 }
