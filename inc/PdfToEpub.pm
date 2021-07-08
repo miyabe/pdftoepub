@@ -39,7 +39,6 @@ sub wrapimage {
 
 	# 画像のサイズを求める
 	my ( $ww, $hh ) = imgsize($infile);
-	print "size $infile $ww $hh\n";
 	if ( $hh != $h ) {
 		$w = int($w * $hh / $h);
 		$h = $hh;
