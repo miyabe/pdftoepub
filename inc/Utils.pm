@@ -1,6 +1,7 @@
 package Utils;
 use File::Basename;
 use HTML::HTML5::Entities;
+use Image::Size;
 
 require Exporter;
 @ISA	= qw(Exporter);
@@ -34,7 +35,7 @@ sub deletestatus {
 sub pdftotext($$) {
 	my $inFile = shift;
 	my $page = shift;
-	
+
 	my $text = '';
 
 	my $mudraw = dirname(__FILE__)."/../../mupdf/build/debug/mudraw";
@@ -81,19 +82,19 @@ sub pdftoimage($$$%;$$) {
 		elsif ($$opts{h}) {
 			$options .= " -h $$opts{h}";
 		}
-		
+
 		if (($$opts{aaVector} eq "no")) {
 			$options = " -b0";
 		}
-		
+
 		my $suffix = $$opts{suffix};
 		my $mudraw = dirname(__FILE__)."/../../mupdf/build/debug/mudraw";
-		
+
 		my $ext = "";
 		if ($$opts{suffix} eq "jpg") {
 			$ext = ".png";
 		}
-		
+
 		my $file;
 		if ($f == -1) {
 			$file = $outFile."%05d.".$suffix;
@@ -137,43 +138,48 @@ sub pdftoimage($$$%;$$) {
 	else {
 		# poppler
 		my $pdftoppm = dirname(__FILE__)."/../../poppler/build/utils/pdftoppm";
-		
-		my $options;
-		if ($$opts{suffix} eq "jpg") {
-			$options = "-jpeg -jpegopt quality=$$opts{qf}";
-		}
-		else {
-			$options = "-png";
-		}
-		if ($$opts{r}) {
-			$options .= " -r $$opts{r}";
-		}
-		if ($$opts{h} && $$opts{w}) {
-			if ($$opts{h} == $$opts{w}) {
-				$options .= " -scale-to $$opts{h}";
+
+		for(;;) {
+			my $options;
+			if ($$opts{suffix} eq "jpg") {
+				$options = "-jpeg -jpegopt quality=$$opts{qf}";
 			}
 			else {
-				$options .= " -scale-to-x $$opts{w} -scale-to-y $$opts{h}";
+				$options = "-png";
 			}
+			if ($$opts{r}) {
+				$options .= " -r $$opts{r}";
+			}
+			if ($$opts{h}) {
+				$options .= " -scale-to-y $$opts{h} -scale-to-x -1";
+			}
+			if (($$opts{aaVector} eq "no")) {
+				$options .= " -aaVector $$opts{aaVector}";
+			}
+			else {
+				$options .= " -aaVector yes";
+			}
+
+			if ($f == -1) {
+				system "$pdftoppm -cropbox $options $inFile $outFile.tmp";
+			}
+			elsif ($f == 0) {
+				system "$pdftoppm -cropbox $options $inFile > $outFile.tmp";
+			}
+			else {
+				system "$pdftoppm  -f $f -l $l -cropbox $options $inFile $outFile.tmp";
+			}
+
+			if ($$opts{w}) {
+				my ($width, $height) = imgsize("$outFile.tmp");
+				if ($width > $$opts{w}) {
+					$$opts{h} = int($$opts{h} * $$opts{w} / $width);
+					delete $$opts{w};
+					next;
+				}
+			}
+			last;
 		}
-		elsif ($$opts{h}) {
-			$options .= " -scale-to-y $$opts{h} -scale-to-x -1";
-		}
-		if (($$opts{aaVector} eq "no")) {
-			$options .= " -aaVector $$opts{aaVector}";
-		}
-		else {
-			$options .= " -aaVector yes";
-		}
-		
-		if ($f == -1) {
-			system "$pdftoppm -cropbox $options $inFile $outFile";
-		}
-		elsif ($f == 0) {
-			system "$pdftoppm -cropbox $options $inFile > $outFile";
-		}
-		else {
-			system "$pdftoppm  -f $f -l $l -cropbox $options $inFile $outFile";
-		}
+		rename("$outFile.tmp", $outFile)
 	}
 }

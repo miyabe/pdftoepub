@@ -39,15 +39,14 @@ sub wrapimage {
 
 	# 画像のサイズを求める
 	my ( $ww, $hh ) = imgsize($infile);
+	print "size $infile $ww $hh\n";
 	if ( $hh != $h ) {
-		$ww *= $h / $hh;
-		$ww = int($ww);
-		$hh = $h;
+		$w = int($w * $hh / $h);
+		$h = $hh;
 	}
-	if ( $ww > $w ) {
-		$hh *= $w / $ww;
-		$hh = int($hh);
-		$ww = $w;
+	if ( $w > $ww ) {
+		$h = int($h * $ww / $w);
+		$w = $ww;
 	}
 
 	my $x;
@@ -311,7 +310,7 @@ sub transcode {
 	our $pdftomapping = "$base/../pdftomapping";
 
 	# 画面の高さ
-	our $view_height = 2068;
+	our $view_height = 2048;
 
 	# 解像度
 	our $dpi = 188;
@@ -848,6 +847,7 @@ EOD
 			}
 			else {
 				$opts{h} = $viewHeight;
+				$opts{w} = 1536;
 			}
 		}
 		if ( $pageToQuality{$page} ) {
@@ -1215,10 +1215,10 @@ EOD
 			my $image = Image::Magick->new;
 			$image->Read("$dir/cover.jpg");
 			if ($viewHeight > 0) {
-				$image->Scale(geometry => $viewHeight.'x'.$viewHeight);
+				$image->Scale(geometry => '1536x'.$viewHeight);
 			}
 			else {
-				$image->Scale(geometry => '2068x2068');
+				$image->Scale(geometry => '1536x2048');
 			}
 			$image->Write("$imagedir/00000.jpg");
 		}
