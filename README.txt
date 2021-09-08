@@ -7,12 +7,14 @@ apt-get install git pkg-config automake libtool bzip2 autoconf gettext make g++ 
 
 apt-get install libxext-dev libcurl4-openssl-dev imagemagick libmagickcore-dev zlib1g-dev libpng12-dev libfreetype6-dev libglib2.0-dev poppler-data pango-graphite libjpeg-dev libxrender-dev libfontconfig1-dev libopenjpeg-dev libxcb-render-util0-dev libxcb-render0-dev libpoppler-glib-dev libxml2-dev libgtk2.0-dev libgtk2.0 liblcms2-dev libhtml-html5-entities-perl libgconf2-4 libjpeg-progs
 
-apt-get install php5 php5-mysql php5-sybase php5-imagick php-pear php5-dev libssh2-1 libssh2-1-dev
+apt-get install php php-mysql php-sybase php-imagick php-pear php-dev libssh2-1 libssh2-1-dev
 
 pear install Archive_Tar
 
+apt-get install libxi-dev freeglut3-dev
+
 apt-get install libossp-uuid-perl libarchive-zip-perl libxml-xpath-perl libimage-size-perl perlmagick uuid-dev
-cpan install Data::UUID XML::XPath Image::Size Archive::Zip
+cpan install Data::UUID XML::XPath Image::Size Archive::Zip File::Copy::Recursive HTML::HTML5::Entities
 
 apt-get install openjdk-7-jre
 
@@ -22,7 +24,7 @@ apt-get install ruby1.9.1 bundler
 
 git clone https://github.com/miyabe/poppler.git
 git clone git://git.sv.nongnu.org/freetype/freetype2.git
-git clone https://github.com/miyabe/mupdf.git
+git clone https://github.com/ArtifexSoftware/mupdf
 git clone https://github.com/miyabe/pdftoepub.git
 
 # ビルドの準備のために、以下の環境変数を設定しておきます。
@@ -64,6 +66,7 @@ make
 
 # mupdfをビルド
 cd $MUPDF_DIR
+git submodule update --init
 make clean
 make
 
@@ -113,7 +116,7 @@ appendix直下のデータがepubのアーカイブのルートの直下に格�
 
 -view-height, -aaVectorオプションはコマンドラインの最後に付けて下さい。
 
--view-heightは、画像の高さをピクセル数で指定します。デフォルトは2048です。
+-view-heightは、画像の高さをピクセル数で指定します。デフォルトは2048です。画像の幅は常に1536までに制限されます。
 
 -dpiは出力結果の解像度をdpi単位で指定します。
 -view-heightと-dpiの両方を指定すると、後のほうが優先されます

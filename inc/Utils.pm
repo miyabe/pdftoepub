@@ -1,7 +1,6 @@
 package Utils;
 use File::Basename;
 use HTML::HTML5::Entities;
-use Image::Size;
 
 require Exporter;
 @ISA	= qw(Exporter);
@@ -38,8 +37,8 @@ sub pdftotext($$) {
 
 	my $text = '';
 
-	my $mudraw = dirname(__FILE__)."/../../mupdf/build/debug/mudraw";
-	my @res = `$mudraw -ttt $inFile $page 2>&1`;
+	my $mudraw = dirname(__FILE__)."/../../mupdf/build/release/mutool draw";
+	my @res = `$mudraw -F stext $inFile $page 2>&1`;
 	my @bounds = ();
 	my ($width, $height);
 	foreach my $line (@res) {
@@ -88,7 +87,7 @@ sub pdftoimage($$$%;$$) {
 		}
 
 		my $suffix = $$opts{suffix};
-		my $mudraw = dirname(__FILE__)."/../../mupdf/build/debug/mudraw";
+		my $mudraw = dirname(__FILE__)."/../../mupdf/build/release/mutool draw";
 
 		my $ext = "";
 		if ($$opts{suffix} eq "jpg") {
@@ -139,47 +138,42 @@ sub pdftoimage($$$%;$$) {
 		# poppler
 		my $pdftoppm = dirname(__FILE__)."/../../poppler/build/utils/pdftoppm";
 
-		for(;;) {
-			my $options;
-			if ($$opts{suffix} eq "jpg") {
-				$options = "-jpeg -jpegopt quality=$$opts{qf}";
-			}
-			else {
-				$options = "-png";
-			}
-			if ($$opts{r}) {
-				$options .= " -r $$opts{r}";
-			}
-			if ($$opts{h}) {
-				$options .= " -scale-to-y $$opts{h} -scale-to-x -1";
-			}
-			if (($$opts{aaVector} eq "no")) {
-				$options .= " -aaVector $$opts{aaVector}";
-			}
-			else {
-				$options .= " -aaVector yes";
-			}
-
-			if ($f == -1) {
-				system "$pdftoppm -cropbox $options $inFile $outFile.tmp";
-			}
-			elsif ($f == 0) {
-				system "$pdftoppm -cropbox $options $inFile > $outFile.tmp";
-			}
-			else {
-				system "$pdftoppm  -f $f -l $l -cropbox $options $inFile $outFile.tmp";
-			}
-
-			if ($$opts{w}) {
-				my ($width, $height) = imgsize("$outFile.tmp");
-				if ($width > $$opts{w}) {
-					$$opts{h} = int($$opts{h} * $$opts{w} / $width);
-					delete $$opts{w};
-					next;
-				}
-			}
-			last;
+		my $options;
+		if ($$opts{suffix} eq "jpg") {
+			$options = "-jpeg -jpegopt quality=$$opts{qf}";
 		}
-		rename("$outFile.tmp", $outFile)
+		else {
+			$options = "-png";
+		}
+		if ($$opts{r}) {
+			$options .= " -r $$opts{r}";
+		}
+		if ($$opts{h} && $$opts{w}) {
+			if ($$opts{h} == $$opts{w}) {
+				$options .= " -scale-to $$opts{h}";
+			}
+			else {
+				$options .= " -scale-to-x $$opts{w} -scale-to-y $$opts{h}";
+			}
+		}
+		elsif ($$opts{h}) {
+			$options .= " -scale-to-y $$opts{h} -scale-to-x -1";
+		}
+		if (($$opts{aaVector} eq "no")) {
+			$options .= " -aaVector $$opts{aaVector}";
+		}
+		else {
+			$options .= " -aaVector yes";
+		}
+
+		if ($f == -1) {
+			system "$pdftoppm -cropbox $options $inFile $outFile";
+		}
+		elsif ($f == 0) {
+			system "$pdftoppm -cropbox $options $inFile > $outFile";
+		}
+		else {
+			system "$pdftoppm  -f $f -l $l -cropbox $options $inFile $outFile";
+		}
 	}
 }

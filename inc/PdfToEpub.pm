@@ -1358,7 +1358,7 @@ EOD
     <meta property="prism:volume">$sales_yyyy</meta>
     <meta property="prism:number">${sales_mm}${sales_dd}</meta>
 EOD
-		if (!$epub2) {
+	if (!$epub2) {
 			print $fp <<"EOD";
     <meta property="layout:fixed-layout">true</meta>
     <meta property="layout:orientation">$orientation</meta>
@@ -1370,20 +1370,28 @@ EOD
 EOD
 	if (!$epub2) {
 			# EPUB3 Fixed Layout
-			# 固定レイアウト、向き自動、見開き自動
+			# 固定レイアウト、見開き
             my $wxh = $width . "x"  . $height;
 			print $fp <<"EOD";
     <meta property="rendition:layout">pre-paginated</meta>
-    <meta property="rendition:orientation">$orientation</meta>
-    <meta property="rendition:spread">auto</meta>
+    <meta property="rendition:spread">landscape</meta>
     <meta name="original-resolution" content="$wxh" />
+EOD
+		}
+		if ($kindle) {
+			print $fp <<"EOD";
+	<meta name="fixed-layout" content="true" />
+	<meta name="orientation-lock" content="none" />
+	<meta name="book-type" content="comic" />
+	<meta name="primary-writing-mode" content="horizontal-rl" />
+	<meta name="RegionMagnification" content="false" />
+	<meta name="cover" content="cover" />
 EOD
 		}
 		if ($ibooks) {
 			print $fp <<"EOD";
     <meta property="ibooks:binding">false</meta>
     <meta property="ibooks:version">$modified_version</meta>
-
 EOD
 		}
         if ($audio) {
@@ -1412,6 +1420,7 @@ EOD
 		#--------------------------------------------
 		#ファイルが見つかる度に呼び出される
 		#--------------------------------------------
+		our $itemTags = "";
 		sub wanted {
 			# 通常ファイル以外は除外
 			-f $_ or return;
@@ -1433,46 +1442,45 @@ EOD
 
 			my $is_image = 0;
 			++$i;
-			print $fp "    <item id=\"r$i\" href=\"$basename\" media-type=\"";
+			my $media_type = "";
 			if (/^.*\.png$/) {
-				print $fp "image/png";
+				$media_type = "image/png";
 				$is_image = 1;
 			}
 			elsif (/^.*\.gif$/) {
-				print $fp "image/gif";
+				$media_type = "image/gif";
 				$is_image = 1;
 			}
 			elsif (/^.*\.jpg$/) {
-				print $fp "image/jpeg";
+				$media_type = "image/jpeg";
 				$is_image = 1;
 			}
 			elsif (/^.*\.svg$/) {
-				print $fp "image/svg+xml";
+				$media_type = "image/svg+xml";
 				$is_image = 1;
 			}
 			elsif (/^.*\.css$/) {
-				print $fp "text/css";
+				$media_type = "text/css";
 			}
 			elsif (/^.*\.js$/) {
-				print $fp "text/javascript";
+				$media_type = "text/javascript";
 			}
 			elsif (/^.*\.html$/ || /^.*\.xhtml$/) {
-				print $fp "application/xhtml+xml";
+				$media_type = "application/xhtml+xml";
 			}
 			elsif (/^.*\.otf$/) {
-				print $fp "font/otf";
+				$media_type = "font/otf";
 			}
 			elsif (/^.*\.mp4$/) {
-				print $fp "audio/mp4";
+				$media_type = "audio/mp4";
 			}
 			elsif (/^.*\.mp3$/) {
-				print $fp "audio/mpeg";
+				$media_type = "audio/mpeg";
 			}
 			elsif (/^.*\.txt$/) {
-				print $fp "text/plain";
+				$media_type = "text/plain";
 			}
 
-			print $fp "\"";
 			# カバーページ
 			if ($is_image) {
 				if ($use_folders) {
@@ -1500,10 +1508,11 @@ EOD
 					}
 				}
 				if ($is_image) {
-					print $fp " properties=\"cover-image\"";
+					$itemTags = "    <item id=\"cover\" href=\"$basename\" media-type=\"$media_type\" properties=\"cover-image\"/>\n".$itemTags;
+					return;
 				}
 			}
-			print $fp "/>\n";
+			$itemTags .= "    <item id=\"r$i\" href=\"$basename\" media-type=\"$media_type\"/>\n";
 		}
 
 		#-- ディレクトリを指定(複数の指定可能) --#
@@ -1511,6 +1520,7 @@ EOD
 
 		#-- 実行 --#
 		find( \&wanted, @directories_to_search );
+		print $fp $itemTags;
 
 		our @items = ();
 
