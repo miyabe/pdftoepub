@@ -1391,7 +1391,6 @@ EOD
 		if ($ibooks) {
 			print $fp <<"EOD";
     <meta property="ibooks:binding">false</meta>
-    <meta property="ibooks:version">$modified_version</meta>
 EOD
 		}
         if ($audio) {
